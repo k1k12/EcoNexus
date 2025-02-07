@@ -16,6 +16,8 @@ Finally, we can run the frontend!
 
 Your browser should automatically open up and start loading the web page (it may take a minute the first time you launch it).
 
+## Please read the following section about the .gitignore and exclude any folders which shouldn't be pushed to the repo. 
+
 # Gitignore
 
 We have a .gitignore where all common excludes are mentioned. These excludes should stay there, so do not delete them, or you will trash the repo with tons of files which shouldn't be pushed here. It will be better if you don't touch the .gitignore at all. And yes, the .idea folder is not excluded by default since in reality not all developers use the same IDE, and if every developer would add their excludes in a single shared file, it would become a mess very quickly.

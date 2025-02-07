@@ -34,6 +34,8 @@ yarn-error.*
 
 # python environment from backend
 backend/env/
+backend/venv/
+venv
 
 # typescript
 *.tsbuildinfo

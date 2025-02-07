@@ -15,3 +15,13 @@ Finally, we can run the frontend!
 - In a new command line window go to the frontend directory and run: `npm run web`
 
 Your browser should automatically open up and start loading the web page (it may take a minute the first time you launch it).
+
+# Gitignore
+
+We have a .gitignore where all common excludes are mentioned. These excludes should stay there, so do not delete them, or you will trash the repo with tons of files which shouldn't be pushed here. It will be better if you don't touch the .gitignore at all. And yes, the .idea folder is not excluded by default since in reality not all developers use the same IDE, and if every developer would add their excludes in a single shared file, it would become a mess very quickly.
+
+### Your local .gitignore
+It is a better approach to exclude your .idea and similar folders, specific to your development environment in your local .gitignore (the file actually is not called .gitignore but it's purpose is the same). The file is located in the .git directory (you need to show hidden files if it's not visible) at .git/info/exclude
+
+Syntax is exactly the same as in .gitignore, the only difference is that this file is not being pushed to the repo, it's your local gitignore which is the best place to specify excludes which are not common across the team. 
+So go ahead and exclude the .idea and/or similar folders using this file! 

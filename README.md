@@ -4,7 +4,7 @@
 - Clone the repo.
 - Open the README file in the backend directory.
 - Follow the instructions there to setup the backend.
-- Once backend is set up, go to the frontend directory and open the README file.
+- Once backend is set up, go to the frontend directory and follow instruction in the README file there.
 - When both backend and frontend are ready, you can proceed.
 
 Now, before starting the frontend, we need to start the backend. 

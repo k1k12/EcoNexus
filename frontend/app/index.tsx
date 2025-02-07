@@ -5,7 +5,7 @@ import {Text, View, Button} from "react-native";
 async function testAPI() {
     try {
         // flask is running on port 5000, and the endpoint is /api/test/
-        const response = await fetch("http://localhost:5000/api/test/");
+        const response = await fetch("http://localhost:5001/api/test/");
         const data = await response.json();  
 
         alert("Wonderful! Response from the Backend (API) is: " + JSON.stringify(data));

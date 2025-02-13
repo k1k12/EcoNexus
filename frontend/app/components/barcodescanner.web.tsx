@@ -2,7 +2,7 @@ import {useRef, useEffect} from "react"
 import { View } from "react-native";
 import Quagga from "@ericblade/quagga2";
 
-export const BarcodeScanner = ({callbackBarcodeDetected}) => {
+const BarcodeScanner = ({callbackBarcodeDetected}) => {
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -53,3 +53,5 @@ export const BarcodeScanner = ({callbackBarcodeDetected}) => {
     return <View ref={videoRef} style={{ position: "relative", width: '33%', height: 'auto',
                                         overflow: "hidden", borderRadius: "20px"}} />;
 };
+
+export default BarcodeScanner;

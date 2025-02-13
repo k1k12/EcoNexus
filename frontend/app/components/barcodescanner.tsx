@@ -1,9 +1,11 @@
 import { Text, View } from "react-native";
 
-export function BarcodeScanner() {
+const BarcodeScanner = () => {
     return (
         <View>
             <Text>Barcode scanning is not supported on this platform.</Text>
         </View>
     );
 }
+
+export default BarcodeScanner;

@@ -3,7 +3,7 @@ import { View, Text } from "react-native"
 import { Camera, useCodeScanner, useCameraDevice, useCameraPermission, Code } from "react-native-vision-camera"
 
 
-export const BarcodeScanner = ({callbackBarcodeDetected}) => {
+const BarcodeScanner = ({callbackBarcodeDetected}) => {
     const device = useCameraDevice("back")
     const { hasPermission, requestPermission } = useCameraPermission()
 
@@ -35,3 +35,5 @@ export const BarcodeScanner = ({callbackBarcodeDetected}) => {
         </View>
     )
 }
+
+export default BarcodeScanner;

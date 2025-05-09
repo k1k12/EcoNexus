@@ -1,28 +1,44 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 
-app = Flask(__name__)
+# Import routers
+from app.api.endpoints.product import router as product_router
+from app.api.endpoints.user import router as user_router
+from app.api.endpoints.auth import router as auth_router
+from app.api.endpoints.recycling_points import router as recycling_router
+from app.api.endpoints.materials import router as materials_router
+from app.api.endpoints.council import router as council_router
+from app.api.endpoints.userdashboards import router as dashboard_router
+from app.api.endpoints.admin import router as admin_router
 
-# Allow CORS for all routes from localhost:8081
-CORS(app, resources={r"/*": {"origins": "http://localhost:8081"}}, supports_credentials=True)
+# Import config
+from app.core.config import settings
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "http://localhost:8081"
-    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    response.headers["Access-Control-Allow-Credentials"] = "true"  # Allow credentials if needed
-    return response
+app = FastAPI()
 
-# Handle preflight (OPTIONS) requests properly
-@app.route("/api/test/", methods=["OPTIONS"])
-def handle_options():
-    response = jsonify({"message": "CORS Preflight OK"})
-    return add_cors_headers(response)
+# Include routers
+app.include_router(product_router)
+app.include_router(user_router)
+app.include_router(auth_router)
+app.include_router(recycling_router)
+app.include_router(materials_router)
+app.include_router(council_router)
+app.include_router(dashboard_router)
+app.include_router(admin_router)
 
-@app.route("/api/test/", methods=["GET"])
-def test():
-    return jsonify({"message": "Hello from Flask backend!"})
+# CORS setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+# Request validation handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"Validation error: {exc}")
+    return await request_validation_exception_handler(request, exc)

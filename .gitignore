@@ -33,11 +33,21 @@ yarn-error.*
 .env*.local
 
 # python environment from backend
-backend/env/
-backend/venv/
-venv
+backend/.env
+backend/.venv/
+.venv
+venv/*
+**/__pycache__/*
+bin/*
 
 # typescript
 *.tsbuildinfo
 
 app-example
+
+# temp
+alembic/versions/*
+
+backend/src/econexus_backend.egg-info/
+.vscode
+*.mp4

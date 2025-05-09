@@ -1,0 +1,75 @@
+{
+    "plastics": {
+        "PET": {
+            "full_name": "Polyethylene Terephthalate",
+            "variations": [
+                "Polyethyleneterephthalate",
+                "PETE",
+                "PET plastic",
+                "Polyester plastic"
+            ]
+        },
+        "HDPE": {
+            "full_name": "High Density Polyethylene",
+            "variations": [
+                "HD Polyethylene",
+                "HDPE plastic"
+            ]
+        },
+        "PVC": {
+            "full_name": "Polyvinyl Chloride",
+            "variations": [
+                "Polyvinylchloride",
+                "Vinyl",
+                "Vinyl plastic",
+                "Polyvinyl chloride",
+                "PVC plastic",
+                "PVC resin"
+            ]
+        },
+        "LDPE": {
+            "full_name": "Low-Density Polyethylene",
+            "variations": [
+                "LD Polyethylene",
+                "LDPE plastic"
+            ]
+        },
+        "PP": {
+            "full_name": "Polypropylene",
+            "variations": [
+                "Poly propylene",
+                "PP plastic",
+                "Polypropene"
+            ]
+        },
+        "PS": {
+            "full_name": "Polystyrene",
+            "variations": [
+                "Poly styrene",
+                "PS plastic",
+                "Styrene plastic"
+            ]
+        },
+        "OTHER": {
+            "full_name": "Other Plastics",
+            "variations": [
+                "Miscellaneous Plastics",
+                "Polylactic Acid",
+                "Bisphenol A",
+                "Polycarbonate",
+                "Nylon",
+                "Acrylic",
+                "Other plastic",
+                "Polycarbonate",
+                "Acrylonitrile Butadiene Styrene",
+                "Polyamide",
+                "Nylon",
+                "Polymethyl Methacrylate",
+                "Acrylic",
+                "Polylactic Acid",
+                "Polyurethane",
+                "Multilayer Plastics"
+            ]
+        }
+    }
+}

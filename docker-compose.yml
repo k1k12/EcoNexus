@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      PGHOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: econexus
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  migrations:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: econexus-migrations
+    volumes:
+      - ./backend:/src
+      - ./backend:/tests
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONPATH=/src
+    depends_on:
+      - db
+    command: bash -c "alembic upgrade head && python tests/manual/db/clear_tables_data.py && python tests/manual/db/populate_tables.py && python src/app/scripts/from_serialized_into_db.py --file=src/app/scripts/councils.pkl"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: econexus-backend
+    volumes:
+      - ./backend:/src
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONPATH=/src
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  frontend:
+    command: bash -c "npm install && npm start"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: econexus-frontend
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "8081:8081"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

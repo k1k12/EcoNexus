@@ -5,6 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.database.models import Base
+from app.core.db_url import database_url_for
 
 from dotenv import load_dotenv
 import os
@@ -26,7 +27,10 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-config.set_main_option("sqlalchemy.url", os.environ["ALEMBIC_DATABASE_URL"])
+# Use ALEMBIC_DATABASE_URL if it's set, otherwise migrate the same database the app uses.
+# % is doubled because alembic's config treats it as interpolation.
+_url = os.getenv("ALEMBIC_DATABASE_URL") or os.environ["DATABASE_URL"]
+config.set_main_option("sqlalchemy.url", database_url_for(_url, "psycopg2").replace("%", "%%"))
 
 
 # other values from the config, defined by the needs of env.py,

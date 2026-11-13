@@ -23,6 +23,7 @@ dependencies = [
   "asyncpg",
   "pydantic_settings",
   "pydantic[email]",
+  "shapely",
 ]
 
 [project.optional-dependencies]

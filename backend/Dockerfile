@@ -2,12 +2,19 @@ FROM python:3.12-slim
 
 WORKDIR /src
 
-RUN apt-get update && apt-get install -y gcc g++ git libev-dev libffi-dev libssl-dev
+ENV PYTHONPATH=/src/src:/src \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 COPY . .
 
-RUN pip install --upgrade pip setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools \
+    && pip install --no-cache-dir .
 
-RUN pip install -e .[dev]
+# Don't run the server as root
+RUN useradd --create-home app && chmod +x start.sh
+USER app
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--workers", "4", "--bind", "0.0.0.0:8000"]
+EXPOSE 8000
+
+CMD ["./start.sh"]

@@ -108,11 +108,10 @@ async def login_for_access_token(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=1800,
-        expires=1800,
-        samesite="lax",
-        secure=False  
-        # for production secure will need to be true 
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
+        domain=settings.COOKIE_DOMAIN,
     )
     
     return {
@@ -137,7 +136,14 @@ async def logout(response: Response):
     Returns:
         dict: Confirmation message.
     """
-    response.delete_cookie(key="access_token")
+    # Has to match how the cookie was set or the browser keeps it
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
+        domain=settings.COOKIE_DOMAIN,
+    )
     return {"message": "Successfully logged out"}
 
 @router.get("/user-info", dependencies=[Depends(get_current_user)])

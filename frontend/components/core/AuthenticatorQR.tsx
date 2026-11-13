@@ -65,8 +65,6 @@ const AuthenticatorQR = ({ email, appName = "EcoNexus" }: AuthenticatorQRProps) 
 
     setOtpAuthUrl(url)
 
-    // In a real app, you would save this secret to your database
-    console.log("Generated TOTP secret:", secret)
   }, [email, appName])
 
   const styles = StyleSheet.create({

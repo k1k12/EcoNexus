@@ -70,7 +70,6 @@ const Dashboard: React.FC = () => {
            return;
         }
         const data = await response.json();
-        console.log("UserDashboard: dashboard data response: ", data);
         setDashboardData(data);
     };
     fetchDashboardData();

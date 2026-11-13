@@ -1,0 +1,40 @@
+# Render blueprint for the EcoNexus API. The website itself is on Cloudflare Pages.
+# Secrets marked sync: false are typed into the Render dashboard, never into this file.
+services:
+  - type: web
+    name: econexus-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    branch: main
+    healthCheckPath: /materials
+    # Only deploy main once the CI checks have passed
+    autoDeployTrigger: checksPass
+    envVars:
+      # Neon connection string (the direct one, not the pooled one)
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      # The website's address, e.g. https://econexus.example.com
+      - key: CORS_ORIGINS
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      # The shared parent domain, e.g. .example.com
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: WEB_CONCURRENCY
+        value: "1"
+      # Optional. Leave blank to skip making an admin account
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

@@ -1,16 +1,20 @@
+# Local development only. Put POSTGRES_PASSWORD in a .env file next to this one.
 services:
   db:
-    image: postgres:latest
+    image: postgres:16
     restart: always
     environment:
-      PGHOST: db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: econexus
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d econexus"]
+      interval: 2s
+      retries: 15
 
   migrations:
     build:
@@ -19,14 +23,14 @@ services:
     container_name: econexus-migrations
     volumes:
       - ./backend:/src
-      - ./backend:/tests
     env_file:
       - ./backend/.env
     environment:
-      - PYTHONPATH=/src
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/econexus
     depends_on:
-      - db
-    command: bash -c "alembic upgrade head && python tests/manual/db/clear_tables_data.py && python tests/manual/db/populate_tables.py && python src/app/scripts/from_serialized_into_db.py --file=src/app/scripts/councils.pkl"
+      db:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && python tests/manual/db/populate_tables.py"
 
   backend:
     build:
@@ -38,11 +42,13 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - PYTHONPATH=/src
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/econexus
     depends_on:
-      - db
+      migrations:
+        condition: service_completed_successfully
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   frontend:
     command: bash -c "npm install && npm start"
@@ -53,7 +59,7 @@ services:
     volumes:
       - ./frontend:/app
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     stdin_open: true
     tty: true
     depends_on:

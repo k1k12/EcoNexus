@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    test_database_url: str
+    # Only the manual test scripts use this, so the live server doesn't need it
+    test_database_url: str = ""
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int

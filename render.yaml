@@ -34,6 +34,9 @@ services:
         value: "3"
       - key: WEB_CONCURRENCY
         value: "1"
+      # Public demo logins for each role, shown in the site's demo popup
+      - key: DEMO_ACCOUNTS
+        value: "true"
       # Optional. Leave blank to skip making an admin account
       - key: ADMIN_EMAIL
         sync: false

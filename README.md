@@ -42,8 +42,13 @@ Give the site and the API the same parent domain, e.g. `econexus.example.com` an
 - Workers & Pages > Create > Pages > connect this repo, production branch `main`.
 - Build command: `cd frontend && npm ci && npx expo export --platform web --clear`
 - Build output directory: `frontend/dist`
-- Environment variables: `EXPO_PUBLIC_BACKEND_URL=https://api.econexus.example.com` and `NODE_VERSION=22`
+- Environment variables: `EXPO_PUBLIC_BACKEND_URL=https://api.econexus.example.com`, `NODE_VERSION=22`, and `EXPO_PUBLIC_DEMO_ACCOUNTS=true` to show the demo accounts popup
 - Add the custom domain `econexus.example.com`.
+
+**Demo accounts**
+- With `DEMO_ACCOUNTS=true` on Render, the server makes a public user, council and admin login (listed in `backend/src/app/core/demo.py`). The site shows them in a popup when `EXPO_PUBLIC_DEMO_ACCOUNTS=true`.
+- They can't change their password, email or role, can't be deleted, and can't see or change any other account. Nobody can register on the demo email domain.
+- The demo accounts and the demo area's recycling points are rebuilt every time the server starts, so anything a visitor changes is undone.
 
 Never use `tests/manual/db/populate_tables.py` on the live database. It wipes every table and creates test accounts with the password `test`.
 

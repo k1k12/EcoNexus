@@ -42,4 +42,4 @@ jobs:
         run: npm ci
       - name: Build the website
         working-directory: frontend
-        run: npx expo export --platform web
+        run: npx expo export --platform web --clear

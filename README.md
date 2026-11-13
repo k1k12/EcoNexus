@@ -40,7 +40,7 @@ Give the site and the API the same parent domain, e.g. `econexus.example.com` an
 
 **3. Website (Cloudflare Pages)**
 - Workers & Pages > Create > Pages > connect this repo, production branch `main`.
-- Build command: `cd frontend && npm ci && npx expo export --platform web`
+- Build command: `cd frontend && npm ci && npx expo export --platform web --clear`
 - Build output directory: `frontend/dist`
 - Environment variables: `EXPO_PUBLIC_BACKEND_URL=https://api.econexus.example.com` and `NODE_VERSION=22`
 - Add the custom domain `econexus.example.com`.

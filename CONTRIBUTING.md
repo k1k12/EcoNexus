@@ -55,5 +55,5 @@ Names are lowercase with hyphens, for example `fix/migration-heads`.
 
 ```
 cd backend && pytest -q tests/pytest
-cd frontend && npx expo export --platform web
+cd frontend && npx expo export --platform web --clear
 ```

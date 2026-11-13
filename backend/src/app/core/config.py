@@ -1,16 +1,24 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
 from pydantic import Field, model_validator
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Settings(BaseSettings):
-    test_database_url: str
+    # Only the manual test scripts use this, so the live server doesn't need it
+    test_database_url: str = ""
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     DATABASE_URL: str
     CORS_ORIGINS: str = Field(..., env="CORS_ORIGINS")
+
+    # Login cookie. Live over https these should be COOKIE_SECURE=true, and the
+    # site and api need to share a domain (e.g. app.example.com and api.example.com)
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+    COOKIE_DOMAIN: Optional[str] = None
 
     class Config:
         env_file = ".env"

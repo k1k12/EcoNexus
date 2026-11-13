@@ -16,13 +16,9 @@
 `make install`
 
 ### Ensure .env is set up right
-PYTHONPATH=./src
-TEST_DATABASE_URL=postgresql+psycopg2://test:password@localhost:8081/test
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:8081/econexus
-SECRET_KEY="REMOVED"
-CORS_ORIGINS="http://localhost:8000,http://localhost:8081,http://localhost:8082,http://localhost:5087"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES= 30
+- Copy the example and fill it in: `cp .env.example .env`
+- Make your own `SECRET_KEY` with `python -c "import secrets; print(secrets.token_urlsafe(64))"`
+- `.env` is in the .gitignore, so never force add it.
 
 
 ### Start server
@@ -43,7 +39,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES= 30
 
 ### DB
 - If you are working on the backend dev, ensure postgres is set up (here is a tutorial https://www.w3schools.com/postgresql/postgresql_install.php on install, or use cl)
-- When connecting password = password, user = postgres, port = 8081
+- Locally, connect with user = postgres, password = password, port = 5432 (match whatever you put in `.env`)
 
 ### DB Migrations
 - ANY changes to db tables must be put in a migration, otherwise the DB wont update.

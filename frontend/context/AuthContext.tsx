@@ -75,10 +75,8 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
 
     const setUserDataFromResponse = (data: any) : void => {
         if (!data.role || !data.user_id || !data.first_name || !data.last_name || !data.email) {
-            console.log(data);
             throw new Error("Invalid data passed, cannot set user data.");
         }
-        console.log("AuthContext - setUserDataFromResponse - data: ", data);
         setUserData({
             userRole: matchUserRole(data.role),
             email: data.email,

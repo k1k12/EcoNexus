@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import pickle
 import argparse
 from typing import List
@@ -9,13 +10,17 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.database.models import Council  # Update if your model path differs
 
-AREA_LIST_URL = "https://webservices.esd.org.uk/areas?areaType=LA&ApplicationKey=REMOVED"
+# Get a key from https://webservices.esd.org.uk and put it in backend/.env as ESD_API_KEY
+ESD_API_KEY = os.getenv("ESD_API_KEY", "")
+AREA_LIST_URL = f"https://webservices.esd.org.uk/areas?areaType=LA&ApplicationKey={ESD_API_KEY}"
 HTTP_TIMEOUT = 10  # seconds
 
 def kml_url_generator(identifier):
-    return f"https://webservices.esd.org.uk/areas/{identifier}/shape?ApplicationKey=REMOVED"
+    return f"https://webservices.esd.org.uk/areas/{identifier}/shape?ApplicationKey={ESD_API_KEY}"
 
 def fetch_and_store_councils(db: Session, save_to: List[str], verbose: bool = False):
+    if not ESD_API_KEY:
+        raise RuntimeError("ESD_API_KEY is not set in backend/.env")
     response = requests.get(AREA_LIST_URL)
     if response.status_code != 200:
         raise Exception(f"Failed to retrieve council list: {response.status_code}")

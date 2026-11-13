@@ -10,10 +10,19 @@ from app.database.crud.auth import (get_user_by_id,
                                get_user_by_id,
                                delete_user)
 from app.api.dependencies import get_db, get_current_user
+from app.core.demo import is_demo_email
 
 from app.schemas.user import UserUpdate, UserResponse
 
 router = APIRouter(tags=["users"])
+
+
+def check_demo_access(current_user: User, target_user: User, changing: bool):
+    """Keep the public demo logins to themselves and stop anyone changing them."""
+    if is_demo_email(current_user.email) and current_user.user_id != target_user.user_id:
+        raise HTTPException(status_code=403, detail="Demo accounts can only see their own account")
+    if changing and is_demo_email(target_user.email):
+        raise HTTPException(status_code=403, detail="Demo accounts can't be changed")
 
 # Endpoints
 @router.get("/account/{user_id}", response_model=UserResponse)
@@ -49,6 +58,8 @@ async def get_user_account(
     # Check if current user has permission to view this account
     if not await check_permission(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not authorised to access this account")
+
+    check_demo_access(current_user, user, changing=False)
     
     return user
 
@@ -86,6 +97,8 @@ async def update_user_account(
     # Check if current user has permission to modify this account
     if not await check_permission(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not authorised to modify this account")
+
+    check_demo_access(current_user, user, changing=True)
     
     # Only admins can change a role or council, otherwise anyone could make themselves an admin
     if current_user.role != "admin" and (user_update.role is not None or user_update.gss_code is not None):
@@ -136,6 +149,8 @@ async def delete_user_account(
     # Check if current user has permission to delete this account
     if not await check_permission(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not authorised to delete this account")
+
+    check_demo_access(current_user, user, changing=True)
     
     # Delete the user
     success = await delete_user(db, user_id)

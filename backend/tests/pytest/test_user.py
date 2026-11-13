@@ -629,7 +629,7 @@ class TestDeleteUserAccount:
 
 class TestCouncilUserSpecificCases:
     async def test_council_user_update_gss_code(self, client: AsyncClient, generate_testing_token, db_session):
-        """Test council user updating their GSS code."""
+        """Test council user can't change their own GSS code."""
         # Create a new council with a unique GSS code
         council = Council(
             gss_code="E12345001",
@@ -677,17 +677,11 @@ class TestCouncilUserSpecificCases:
             headers={"Authorization": f"Bearer {token}"}
         )
         
-        assert response.status_code == status.HTTP_200_OK
-        
-        # Manually update the session to ensure we get fresh data
+        # Council users can't move themselves to another council, that needs an admin
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
         await db_session.refresh(council_user)
-        
-        # Verify the GSS code was updated in the database
-        result = await db_session.execute(
-            select(User).where(User.user_id == council_user.user_id)
-        )
-        updated_user = result.scalars().first()
-        assert updated_user.gss_code == new_council.gss_code
+        assert council_user.gss_code == council.gss_code
     
     async def test_admin_update_council_user_role(self, client: AsyncClient, generate_testing_token, db_session):
         """Test admin updating a council user's role."""
@@ -806,14 +800,40 @@ class TestCouncilUserSpecificCases:
             headers={"Authorization": f"Bearer {token}"}
         )
 
-        # This should succeed
-        assert response.status_code == status.HTTP_200_OK
+        # Only an admin can move a council user to another council
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
-        # Refresh the user to get updated data
         await db_session.refresh(council_user)
-    
-        # Verify the GSS code was updated in the database
-        assert council_user.gss_code == council2.gss_code
+        assert council_user.gss_code != council2.gss_code
+
+    async def test_user_cannot_make_themselves_admin(self, client: AsyncClient, generate_testing_token, seed_dependencies, db_session):
+        """Test a regular user can't change their own role."""
+        user = seed_dependencies["user"]
+        token = generate_testing_token(user.email, user.role, {"user_id": user.user_id})
+
+        response = await client.patch(
+            f"/account/{user.user_id}",
+            json={"role": "admin"},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        await db_session.refresh(user)
+        assert user.role == "user"
+
+    async def test_admin_cannot_set_unknown_role(self, client: AsyncClient, generate_testing_token, seed_dependencies):
+        """Test an admin can't set a role that doesn't exist."""
+        admin = seed_dependencies["admin_user"]
+        user = seed_dependencies["user"]
+        token = generate_testing_token(admin.email, admin.role, {"user_id": admin.user_id})
+
+        response = await client.patch(
+            f"/account/{user.user_id}",
+            json={"role": "superuser"},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 class TestEdgeCases:
     async def test_update_with_malformed_json(self, client: AsyncClient, generate_testing_token, seed_dependencies):

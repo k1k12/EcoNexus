@@ -87,6 +87,13 @@ async def update_user_account(
     if not await check_permission(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not authorised to modify this account")
     
+    # Only admins can change a role or council, otherwise anyone could make themselves an admin
+    if current_user.role != "admin" and (user_update.role is not None or user_update.gss_code is not None):
+        raise HTTPException(status_code=403, detail="Only admins can change roles or councils")
+
+    if user_update.role is not None and user_update.role not in ("user", "council", "admin"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+
     # Check for email conflict
     if user_update.email and await check_email_exists(db, user_update.email, exclude_user_id=user_id):
         raise HTTPException(status_code=400, detail="Email already taken")

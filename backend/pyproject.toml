@@ -8,7 +8,7 @@ dependencies = [
   "httpx",
   "gunicorn",
   "uvicorn[standard]",
-  "sqlalchemy",
+  "sqlalchemy[asyncio]",
   "sqlalchemy_utils",
   "psycopg2-binary",
   "python-jose",

@@ -57,7 +57,9 @@ async def council_approval(
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
-    result = await db.execute(select(Admin).filter(Admin.gss_code == gss_code))
+    result = await db.execute(
+        select(Admin).filter(Admin.gss_code == gss_code, Admin.is_approved == False)
+    )
     pending_approval = result.scalars().first()
 
     if not pending_approval:

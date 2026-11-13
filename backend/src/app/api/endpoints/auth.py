@@ -9,6 +9,7 @@ from app.core.security import (
     create_access_token,
 )
 from app.core.config import settings
+from app.core.demo import is_demo_email
 from app.api.dependencies import get_db, get_current_user
 from app.database.models import User
 from app.schemas.auth import UserRegister, Token
@@ -34,6 +35,10 @@ async def register_user(user: UserRegister, db: AsyncSession = Depends(get_db)):
     Returns:
         dict: Success message after user creation.
     """
+
+    # The demo addresses are reserved for the public demo logins
+    if is_demo_email(user.email):
+        raise HTTPException(status_code=400, detail="This email domain is reserved for demo accounts")
 
     await validate_unique_email(user.email, db)
     

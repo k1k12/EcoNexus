@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {View,Text,Image,StyleSheet,Pressable,  Platform,} from "react-native";
 import ThemeToggle from "@/components/core/ThemeToggle";
 import LogoDark from "@/assets/images/logo-dark.png";
@@ -8,6 +8,27 @@ import SignInIcon from "@/assets/icons/signin";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 import { router } from "expo-router";
+import DemoAccountsModal from "@/components/core/DemoAccountsModal";
+import { DEMO_ACCOUNTS_ENABLED } from "@/constants/DemoAccounts";
+
+const DEMO_SEEN_KEY = "econexus-demo-popup-seen";
+// The header mounts again on every layout change, so only open the popup once per page load
+let demoPopupChecked = false;
+
+// Browser storage can be missing or blocked, so treat any error as "not seen"
+const hasSeenDemoPopup = () => {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SEEN_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+const rememberDemoPopupSeen = () => {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(DEMO_SEEN_KEY, "true");
+  } catch {}
+};
 
 /**
  * Header Component
@@ -43,6 +64,21 @@ const Header = () => {
 
   const { isUserLoggedIn, logout } = useAuth();
   const { theme } = useThemeContext();
+  const [demoOpen, setDemoOpen] = useState(false);
+
+  // Show the demo logins to first-time visitors who aren't logged in
+  useEffect(() => {
+    if (!DEMO_ACCOUNTS_ENABLED || demoPopupChecked) return;
+    demoPopupChecked = true;
+    if (!isUserLoggedIn && !hasSeenDemoPopup()) {
+      setDemoOpen(true);
+    }
+  }, []);
+
+  const closeDemo = () => {
+    rememberDemoPopupSeen();
+    setDemoOpen(false);
+  };
 
   const isDarkMode = theme.type === "dark";
   const logoSource = isDarkMode ? LogoLight : LogoDark;
@@ -98,6 +134,21 @@ const Header = () => {
       marginRight: 12,
     },
     
+    demoButton: {
+      marginRight: 16,
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: theme.primary,
+    },
+
+    demoButtonText: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: theme.primary,
+    },
+
     signInText: {
       fontSize: 15,
       fontWeight: 700,
@@ -118,6 +169,16 @@ const Header = () => {
       <View style={styles.flexGrow} />
 
       <View style={styles.right}>
+        {DEMO_ACCOUNTS_ENABLED && (
+          <Pressable
+            style={styles.demoButton}
+            onPress={() => setDemoOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Show the demo accounts"
+          >
+            <Text style={styles.demoButtonText}>Demo accounts</Text>
+          </Pressable>
+        )}
         <ThemeToggle />
         <View style={styles.signInRow}>
           {isUserLoggedIn ? (
@@ -138,6 +199,8 @@ const Header = () => {
           )}
         </View>      
       </View>
+
+      {DEMO_ACCOUNTS_ENABLED && <DemoAccountsModal visible={demoOpen} onClose={closeDemo} />}
     </View>
   );
 };

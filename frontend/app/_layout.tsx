@@ -3,6 +3,7 @@ import PageContextProvider from '@/context/PageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Slot } from 'expo-router';
 import { useFonts } from 'expo-font';
+import { Platform } from 'react-native';
 
 /**
  * Root Layout Component
@@ -30,6 +31,14 @@ import { useFonts } from 'expo-font';
  * Components:
  *   - Slot: Renders the content of the current screen.
  */
+
+// The council map editor and a few bits of the map are plain html, so without this
+// they fall back to the browser's default serif font.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+    const fallbackFont = document.createElement('style');
+    fallbackFont.textContent = 'body, input, textarea, select, button { font-family: SpaceGrotesk_400Regular, system-ui, sans-serif; }';
+    document.head.appendChild(fallbackFont);
+}
 
 export default function Layout() {
     // Not waiting for these: text shows in the default font until they arrive.

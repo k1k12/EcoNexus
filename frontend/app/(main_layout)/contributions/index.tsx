@@ -140,19 +140,24 @@ const Contributions = () => {
 
         <View style={{ marginTop: 48 }}>
 
-          <Entry date="Feb to May 2025" title="The coursework: I led the backend team">
+          <Entry date="Feb to May 2025" title="The coursework: I led the backend">
             <P>
               The app has three kinds of user: residents scanning things, councils looking after their recycling points, and
-              admins letting councils in. I led the team that built the API behind all of it, in Python with{" "}
-              <Text style={strong}>FastAPI</Text> and <Text style={strong}>Postgres</Text>. Between us that was:
+              admins letting councils in. I led the backend team, and wrote a lot of it myself:
             </P>
+            <Bullets items={[
+              <Text>the <Text style={strong}>API</Text>, in Python with <Text style={strong}>FastAPI</Text></Text>,
+              <Text>the <Text style={strong}>PostgreSQL database</Text> and the models behind it</Text>,
+              <Text>making the whole thing <Text style={strong}>async</Text>, from the endpoints down to the database calls</Text>,
+              <Text><Text style={strong}>over 150 tests</Text> with pytest, covering logins, permissions, products, recycling points and the dashboards</Text>,
+            ]} />
+            <P>Between the backend team, the API handles:</P>
             <Bullets items={[
               "logging in with JWT tokens in cookies, with separate roles for residents, councils and admins",
               "council sign up tied to a real council area (using GSS codes), with an admin approving each one",
               "barcode lookups: anything we haven't seen before gets looked up on Open Food Facts and matched to one of 16 materials",
               "recycling points for each council, with what they take and when they're open",
               "the dashboard numbers, worked out from everyone's scan history",
-              "database migrations with Alembic, tests with pytest, security scans with Bandit and load tests with Locust",
             ]} />
             <P>The rest of the team built the app itself in Expo and React Native.</P>
           </Entry>

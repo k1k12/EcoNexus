@@ -1,482 +1,218 @@
-import type React from "react"
-import { useState, useMemo, useEffect } from "react"
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Pressable, Platform } from "react-native"
-import { useThemeContext } from "@/context/ThemeContext"
-import { BarChart, PieChart } from "react-native-gifted-charts"
-import { Svg, Circle, Path } from "react-native-svg"
-import ArrowUpIcon from "@/assets/icons/arrowup"
-import ArrowDownIcon from "@/assets/icons/arrowdown"
-import RecycleIcon from "@/assets/icons/recycle"
-import BarchartIcon from "@/assets/icons/barchart"
+import React, { useEffect, useMemo, useState } from "react"
+import { View, Text, ScrollView, useWindowDimensions } from "react-native"
+import Svg, { Circle, G } from "react-native-svg"
+
 import { withAuth } from "@/utils/withAuth"
 import { fetchProtectedEndpoint } from "@/utils/apiCalls"
 import { BACKEND_URL } from "@/config"
 import { usePage } from "@/context/PageContext"
+import { useAuth } from "@/context/AuthContext"
 import LoadingScreen from "@/components/core/LoadingScreen"
-import MaterialPercentagesPieChart, { MaterialPercentage } from "@/components/charts/MaterialPercentagesPieChart"
-import { generateColor } from "@/utils/superMegaHackyColorGenerator"
-
-import UsersIcon from "@/assets/icons/users"
+import { FONT } from "@/constants/Fonts"
+import { Panel, PanelTitle, StatCard, RankedBars, materialLabel, useDashboardColours, styles as parts } from "@/components/dashboard/DashboardParts"
 
 /**
  * CouncilDashboard Component
  *
- * This component displays a comprehensive recycling dashboard for council users, providing insights into city-wide recycling metrics and performance analysis.
- * It includes several key sections:
- *   1. Summary Cards: Displays key performance indicators (KPIs) such as total recycled items, participating households, participation rate, and collection efficiency.
- *   2. Monthly Recycling Progress Chart: A bar chart visualizing the total recycled items by month, along with a percentage change indicator compared to the previous month.
- *   3. Material Breakdown Pie Chart: A pie chart illustrating the breakdown of recycled items by material type, allowing users to click on segments to view percentages.
- *   4. District Performance Table: A table presenting recycling metrics by district, including the number of recycled items and a progress bar indicating performance relative to the highest-performing district.
+ * What's been recycled across a council's points: headline numbers, the
+ * materials people bring, the busiest points and a dot map where bigger dots
+ * mean busier points.
  *
- * Key Features:
- *   - Responsive layout that adapts to different screen sizes, providing an optimal viewing experience on both desktop and mobile devices.
- *   - Interactive charts and tables that allow users to explore the data in more detail.
- *   - Theme context integration for consistent styling and appearance.
- *   - Mock data for demonstration purposes, with the potential to integrate with real-time data sources.
- *
- * Data Sources:
- *   - areaRecyclingData: Mock data representing recycling metrics for different districts.
- *   - monthlyData: Mock data representing total recycled items by month.
- *   - materialData: Mock data representing the breakdown of recycled items by material type.
- *
- * Functions:
- *   - The component utilizes various helper functions and calculations to derive meaningful insights from the data, such as calculating total recycled items, participation rates, and month-over-month changes.
- *   - It also implements event handlers for user interactions, such as clicking on pie chart segments to view percentages.
+ * Data:
+ *   - GET /dashboard: items per material at each point
+ *   - GET /recycling-points?gss_code=…: where each point is and what it takes
+ *   - GET /all-councils: the council's name
  */
 
+type PointInfo = {
+  point_id: number
+  latitude: number
+  longitude: number
+  materials: string[]
+}
+
+type PointRow = PointInfo & { items: number }
+
+const MAP_W = 480
+const MAP_H = 260
+
 const CouncilDashboard: React.FC = () => {
-  const { theme } = useThemeContext()
+  const c = useDashboardColours()
+  const { theme } = c
   const { width } = useWindowDimensions()
-  const [activeMaterial, setActiveMaterial] = useState<string | null>(null)
-  const { showToastNotification } = usePage();
-  const [fetchedDashboardData, setFetchedDashboardData] = useState<any | null>(null);
-  const [processedDashboardData, setProcessedDashboardData] = useState<any | null>(null);
+  const wide = width >= 900
+  const { userData } = useAuth()
+  const { showToastNotification } = usePage()
 
-  // Create a grid-like layout similar to the web version
-  const gridLayout = width > 768
-    
-  useEffect(() => {
-      const fetchDashboardData = async () => {
-          const response = await fetchProtectedEndpoint(`${BACKEND_URL}/dashboard`);
-          if (!response.ok) {
-              showToastNotification("Couldn't fetch dashboard data, please try again");
-              return;
-          }
-          const data = await response.json();
-          setFetchedDashboardData(data);
-      };
-      fetchDashboardData();
-  }, []);
+  const [frequencies, setFrequencies] = useState<Record<string, Record<string, number>> | null>(null)
+  const [points, setPoints] = useState<PointInfo[]>([])
+  const [councilName, setCouncilName] = useState<string | null>(null)
 
   useEffect(() => {
-      if (!fetchedDashboardData) return;
-      if (Object.keys(fetchedDashboardData.material_frequencies).length < 1) {
-          setProcessedDashboardData({
-              enoughData: false,
-          });
-          return;
+    const load = async () => {
+      const response = await fetchProtectedEndpoint(`${BACKEND_URL}/dashboard`)
+      if (!response.ok) {
+        showToastNotification("Couldn't fetch dashboard data, please try again")
+        return
       }
-      // Step 1: Aggregate the material values
-      const aggregatedMaterials = Object.entries(fetchedDashboardData.material_frequencies)
-      .flatMap(([_, materialData]) => Object.entries(materialData))
-      .reduce((acc: Record<string, number>, [material, value]) => {
-          acc[material] = (acc[material] || 0) + value;
-          return acc;
-      }, {}); 
+      setFrequencies((await response.json()).material_frequencies)
 
-
-      // Step 2: Calculate the total sum of all materials
-      const totalRecycled = Object.values(aggregatedMaterials).reduce(
-          (sum, value) => sum + value,
-              0
-      );
-      const materialPercentages: MaterialPercentage[] = Object.entries(aggregatedMaterials).map(
-      ([name, value]) => {
-        const percentage = ((value / totalRecycled) * 100).toFixed(2);
-        const color = generateColor(name); // This can be adjusted
-
-        return {
-          name,
-          value,
-          percentage,
-          color,
-        };
+      // The points and the council's name are extras: the page still works without them
+      const gss = userData?.gssCode
+      if (!gss) return
+      try {
+        const [pointsRes, councilsRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/recycling-points?gss_code=${encodeURIComponent(gss)}`),
+          fetch(`${BACKEND_URL}/all-councils`),
+        ])
+        if (pointsRes.ok) setPoints(await pointsRes.json())
+        if (councilsRes.ok) {
+          const councils: { gss_code: string; name: string }[] = await councilsRes.json()
+          setCouncilName(councils.find((x) => x.gss_code === gss)?.name ?? null)
+        }
+      } catch {
+        // Leave the extras out if the network drops
       }
-    );
+    }
+    load()
+  }, [])
 
-      setProcessedDashboardData({
-          totalRecycled,
-          materialPercentages,
-          enoughData: true
-      });
-  }, [fetchedDashboardData]);
+  const view = useMemo(() => {
+    if (!frequencies) return null
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      width: "100%",
-      backgroundColor: theme.bg_primary || "#f5f7f5",
-    },
-    contentContainer: {
-      flexGrow: 1,
-      alignContent: "center",
-      alignItems: "center"
-    },
-    header: {
-      marginBottom: 24,
-    },
-    headerTitle: {
-      fontSize: 32,
-      fontWeight: "bold",
-      color: "#355841", // hunter-green
-      marginBottom: 8,
-    },
-    headerSubtitle: {
-      fontSize: 18,
-      color: "#6d987a", // cambridge-blue
-      marginBottom: 16,
-    },
-    card: {
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      marginBottom: 24,
-      padding: 20,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    cardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    cardIcon: {
-      marginRight: 12,
-      backgroundColor: "rgba(109, 152, 122, 0.1)",
-      padding: 8,
-      borderRadius: 8,
-    },
-    cardTitle: {
-      fontSize: 22,
-      fontWeight: "600",
-      color: "#355841", // hunter-green
-    },
-    cardDescription: {
-      fontSize: 16,
-      color: "#6d987a", // cambridge-blue
-      marginBottom: 16,
-    },
-    summaryRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-      marginBottom: 16,
-    },
-    summaryCard: {
-      width: "100%",
-      backgroundColor: "rgba(109, 152, 122, 0.05)",
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: "rgba(109, 152, 122, 0.1)",
-    },
-    summaryItemHeader:{
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    summaryIcon: {
-      marginRight: 8,
-      backgroundColor: "rgba(109, 152, 122, 0.1)",
-      padding: 6,
-      borderRadius: 8,
-    },
-    summaryLabel: {
-      fontSize: 14,
-      color: "#6d987a", // cambridge-blue
-    },
-    summaryValue: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: "#355841", // hunter-green
-      marginTop: 4,
-    },
-    summaryUnit: {
-      fontSize: 14,
-      color: "#6d987a", // cambridge-blue
-      marginTop: 4,
-    },
-    chartsRow: {
-      flexDirection: gridLayout ? "row" : "column",
-      justifyContent: "center",
-      gap: 20,
-      alignItems: "center",
-      width: "100%",
-      marginBottom: 24,
-    },
-    chartCard: {
-      width: gridLayout ? "49%" : "100%",
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      padding: 20,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-      marginBottom: gridLayout ? 0 : 24,
-    },
-    chartContainer: {
-      width: "100%",
-      alignItems: "center",
-      marginVertical: 16,
-      height: 380, // Increased from 320
-    },
-    barLabelContainer: {
-      backgroundColor: "rgba(109, 152, 122, 0.1)",
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 4,
-    },
-    barLabel: {
-      fontSize: 12,
-      fontWeight: "600",
-    },
-    percentChangeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-end",
-      marginTop: 8,
-      marginBottom: 12,
-    },
-    percentChange: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    },
-    percentText: {
-      fontSize: 14,
-      fontWeight: "600",
-      marginLeft: 4,
-    },
-    pieChartSection: {
-      flexDirection: "column",
-    },
-    pieChartContainer: {
-      width: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-      height: 280, // Increased from 220
-    },
-    legendContainer: {
-      width: "100%",
-      marginTop: 16,
-    },
-    legendRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-    },
-    legendItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 8,
-      paddingVertical: 6,
-      paddingHorizontal: 8,
-      borderRadius: 6,
-      width: "48%",
-    },
-    legendItemActive: {
-      backgroundColor: "rgba(109, 152, 122, 0.15)",
-    },
-    legendLeftContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    legendColor: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      marginRight: 8,
-    },
-    legendText: {
-      fontSize: 14,
-      color: "#355841",
-    },
-    legendTextActive: {
-      fontWeight: "700",
-    },
-    legendPercentage: {
-      fontSize: 14,
-      color: "#355841",
-      fontWeight: "600",
-    },
-    totalContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    totalValue: {
-      fontSize: 28, // Increased from 24
-      fontWeight: "700",
-      color: "#355841",
-    },
-    totalLabel: {
-      fontSize: 14,
-      color: "#6d987a",
-    },
-    districtTableContainer: {
-      width: "70%", // Reduced from 80%
-      maxWidth: 600, // Add a max width to prevent it from being too wide on large screens
-      alignSelf: "center", // Center the table
-      marginTop: 16,
-      marginBottom: 8,
-      backgroundColor: "rgba(109, 152, 122, 0.05)",
-      borderRadius: 8,
-      overflow: "hidden",
-    },
-    tableHeader: {
-      flexDirection: "row",
-      backgroundColor: "rgba(109, 152, 122, 0.1)",
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-    },
-    tableHeaderText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#355841",
-    },
-    tableRow: {
-      flexDirection: "row",
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: "rgba(109, 152, 122, 0.1)",
-    },
-    tableColumn: {
-      flex: 1,
-    },
-    tableText: {
-      fontSize: 15,
-      color: "#355841",
-    },
-    progressBarContainer: {
-      height: 8,
-      backgroundColor: "rgba(109, 152, 122, 0.1)",
-      borderRadius: 4,
-      overflow: "hidden",
-      marginTop: 8,
-    },
-    progressBar: {
-      height: "100%",
-      backgroundColor: "#6d987a",
-    },
-  })
-  
-  if (!fetchedDashboardData || !processedDashboardData) return <LoadingScreen />;
-  if (!processedDashboardData.enoughData) {
-      return (
-        <View style={{justifyContent: "center"}}>
-            <Text style={{color: theme.text, textAlign: "center", textAlignVertical: "center", fontSize: 24}}>Not enough data for your area yet.</Text>
-        </View>
-      )
+    const materials: Record<string, number> = {}
+    const itemsByPoint: Record<string, number> = {}
+    for (const [pointId, counts] of Object.entries(frequencies)) {
+      itemsByPoint[pointId] = 0
+      for (const [material, n] of Object.entries(counts)) {
+        materials[material] = (materials[material] || 0) + n
+        itemsByPoint[pointId] += n
+      }
+    }
+    const total = Object.values(materials).reduce((s, n) => s + n, 0)
+    const topMaterial = Object.entries(materials).sort((a, b) => b[1] - a[1])[0]
+
+    const rows: PointRow[] = points.map((p) => ({ ...p, items: itemsByPoint[String(p.point_id)] || 0 }))
+    const busiest = [...rows].sort((a, b) => b.items - a.items).filter((r) => r.items > 0).slice(0, 5)
+    const pointCount = points.length || Object.keys(frequencies).length
+
+    // Fit the points into the little map, squashing longitude so the shape looks right at UK latitudes
+    let dots: { x: number; y: number; r: number; busy: boolean; id: number }[] = []
+    if (rows.length > 0) {
+      const lats = rows.map((r) => r.latitude)
+      const lons = rows.map((r) => r.longitude)
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons)
+      const squash = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)
+      const spanX = Math.max((maxLon - minLon) * squash, 0.001)
+      const spanY = Math.max(maxLat - minLat, 0.001)
+      const scale = Math.min((MAP_W - 60) / spanX, (MAP_H - 60) / spanY)
+      const offsetX = (MAP_W - spanX * scale) / 2
+      const offsetY = (MAP_H - spanY * scale) / 2
+      const maxItems = Math.max(1, ...rows.map((r) => r.items))
+      dots = rows
+        .map((r) => ({
+          id: r.point_id,
+          x: offsetX + (r.longitude - minLon) * squash * scale,
+          y: offsetY + (maxLat - r.latitude) * scale,
+          r: r.items === 0 ? 4 : 5 + 17 * Math.sqrt(r.items / maxItems),
+          busy: r.items > 0,
+        }))
+        .sort((a, b) => b.r - a.r) // small dots on top so they stay visible
+    }
+
+    return { materials, total, topMaterial, busiest, pointCount, dots }
+  }, [frequencies, points])
+
+  if (!view) return <LoadingScreen />
+
+  const takes = (list: string[]) => {
+    const names = list.map((m) => materialLabel(m).toLowerCase())
+    if (names.length <= 3) return names.join(", ")
+    return `${names.slice(0, 3).join(", ")} +${names.length - 3}`
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Council Recycling Dashboard</Text>
-          <Text style={styles.headerSubtitle}>City-wide recycling metrics and performance analysis</Text>
+    <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={{ width: "100%", maxWidth: 1200, alignSelf: "center", paddingHorizontal: wide ? 24 : 8, paddingTop: 24 }}>
+
+        <Text style={{ fontFamily: FONT.semiBold, fontSize: 16, color: theme.accent }}>Council dashboard</Text>
+        <Text style={{ fontFamily: FONT.bold, fontSize: wide ? 44 : 32, letterSpacing: -1.5, color: theme.text, marginTop: 6 }} accessibilityRole="header">
+          {councilName ?? "Your area"}
+        </Text>
+        <Text style={{ fontFamily: FONT.regular, fontSize: wide ? 20 : 17, color: theme.text_muted, marginTop: 10 }}>
+          Everything logged at your recycling points.
+        </Text>
+
+        <View style={[parts.row, { marginTop: 28 }]}>
+          <StatCard label="Items recycled" value={view.total.toLocaleString()} highlight />
+          <StatCard label="Recycling points" value={`${view.pointCount}`} />
+          <StatCard label="Most recycled" value={view.topMaterial ? materialLabel(view.topMaterial[0]) : "Nothing yet"} unit={view.topMaterial ? `${view.topMaterial[1].toLocaleString()} items` : undefined} />
+          <StatCard label="Busiest point" value={view.busiest[0] ? `#${view.busiest[0].point_id}` : "None yet"} unit={view.busiest[0] ? `${view.busiest[0].items.toLocaleString()} items` : undefined} />
         </View>
 
-        {/* Charts Row - Bar Chart and Pie Chart side by side */}
-        <View style={styles.chartsRow}>
-            {/* Summary Cards */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardIcon}>
-                <BarchartIcon width={24} height={24} stroke={theme.secondary}/>
-                </View>
-                <Text style={styles.cardTitle}>Recycling Overview</Text>
-              </View>
-              <Text style={styles.cardDescription}>Key performance indicators for the current fiscal year</Text>
+        <View style={[parts.row, { marginTop: 16 }]}>
+          <Panel style={{ flexGrow: 1, flexBasis: 440, minWidth: 0 }}>
+            <PanelTitle title="What people bring" subtitle="Items by material, across all your points" />
+            {view.total > 0 ? (
+              <RankedBars data={view.materials} show={8} />
+            ) : (
+              <Text style={{ fontFamily: FONT.regular, fontSize: 16, color: theme.text_muted }}>Nothing has been logged at your points yet.</Text>
+            )}
+          </Panel>
 
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <View style={styles.summaryItemHeader}>
-                    <View style={styles.summaryIcon}>
-                        <RecycleIcon width={24} height={24} stroke={theme.secondary}/>
-                    </View>
-                    <Text style={styles.summaryLabel}>Total Recycled</Text>
+          <View style={{ flexGrow: 1, flexBasis: 440, minWidth: 0, gap: 16 }}>
+            <Panel>
+              <PanelTitle title="Busiest points" />
+              {view.busiest.length === 0 ? (
+                <Text style={{ fontFamily: FONT.regular, fontSize: 16, color: theme.text_muted }}>Your points' activity shows up here.</Text>
+              ) : (
+                <View>
+                  <View style={{ flexDirection: "row", paddingBottom: 8 }}>
+                    <Text style={{ width: 64, fontFamily: FONT.medium, fontSize: 14, color: theme.text_muted }}>Point</Text>
+                    <Text style={{ flex: 1, fontFamily: FONT.medium, fontSize: 14, color: theme.text_muted }}>Takes</Text>
+                    <Text style={{ width: 64, textAlign: "right", fontFamily: FONT.medium, fontSize: 14, color: theme.text_muted }}>Items</Text>
                   </View>
-                  <Text style={styles.summaryValue}>{processedDashboardData.totalRecycled.toLocaleString()}</Text>
-                  <Text style={styles.summaryUnit}>items</Text>
+                  {view.busiest.map((row) => (
+                    <View key={row.point_id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderColor: c.border }} accessible accessibilityLabel={`Point ${row.point_id}, takes ${takes(row.materials)}, ${row.items} items`}>
+                      <Text style={{ width: 64, fontFamily: FONT.bold, fontSize: 15, color: theme.text }}>#{row.point_id}</Text>
+                      <Text style={{ flex: 1, fontFamily: FONT.regular, fontSize: 15, color: theme.text_muted }} numberOfLines={1}>{takes(row.materials)}</Text>
+                      <Text style={{ width: 64, textAlign: "right", fontFamily: FONT.bold, fontSize: 15, color: theme.text }}>{row.items.toLocaleString()}</Text>
+                    </View>
+                  ))}
                 </View>
-              </View>
-            </View>
+              )}
+            </Panel>
 
-          {/* Material Breakdown Pie Chart */}
-          <View style={[styles.chartCard, { width: gridLayout ? "38%" : "100%" }]}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}>
-              <RecycleIcon width={24} height={24} stroke={theme.secondary}/>
-              </View>
-              <Text style={styles.cardTitle}>Material Breakdown</Text>
-            </View>
-            <Text style={styles.cardDescription}>Recycled items by material type - click on the data to see percentages</Text>
-
-            <View style={styles.pieChartSection}>
-              <View style={[styles.pieChartContainer, { height: 280 }]}>
-                <MaterialPercentagesPieChart
-                  data={processedDashboardData.materialPercentages}
-                />
-              </View>
-
-              {/* Reorganized legend into 2 columns */}
-              <View style={styles.legendContainer}>
-                <View style={styles.legendRow}>
-                  {processedDashboardData.materialPercentages.map((material: MaterialPercentage) => {
-                    const isActive = activeMaterial === material.name
-                    return (
-                      <Pressable
-                        key={material.name}
-                        style={[styles.legendItem, isActive && styles.legendItemActive]}
-                        onPress={() => setActiveMaterial(isActive ? null : material.name)}
-                      >
-                        <View style={styles.legendLeftContent}>
-                          <View
-                            style={[
-                              styles.legendColor,
-                              {
-                                backgroundColor: material.color,
-                                width: isActive ? 16 : 12,
-                                height: isActive ? 16 : 12,
-                                borderWidth: isActive ? 2 : 0,
-                                borderColor: "#ffffff",
-                              },
-                            ]}
-                          />
-                          <Text style={[styles.legendText, isActive && styles.legendTextActive]}>{material.name}</Text>
-                        </View>
-                        <Text style={styles.legendPercentage}>{material.value.toLocaleString()}</Text>
-                      </Pressable>
-                    )
-                  })}
+            {view.dots.length > 0 && (
+              <Panel style={{ position: "relative" }}>
+                <PanelTitle title="Where it happens" />
+                <Text style={{ position: "absolute", top: 20, right: 20, fontFamily: FONT.hand, fontSize: 22, color: theme.accent, transform: [{ rotate: "-3deg" }] }}>bigger dot = busier point</Text>
+                <View accessible accessibilityRole="image" accessibilityLabel={`Map of your ${view.dots.length} recycling points, sized by how busy they are`}>
+                  <Svg width="100%" height={220} viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
+                    <G>
+                      {view.dots.map((dot) => (
+                        <Circle
+                          key={dot.id}
+                          cx={dot.x}
+                          cy={dot.y}
+                          r={dot.r}
+                          fill={dot.busy ? theme.accent : "none"}
+                          fillOpacity={0.8}
+                          stroke={dot.busy ? "none" : c.faint}
+                          strokeWidth={1.5}
+                        />
+                      ))}
+                    </G>
+                  </Svg>
                 </View>
-              </View>
-            </View>
+              </Panel>
+            )}
           </View>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   )
 }
 
-export default withAuth(CouncilDashboard, ["COUNCIL"]);
+export default withAuth(CouncilDashboard, ["COUNCIL"])

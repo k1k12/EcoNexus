@@ -1,241 +1,180 @@
-import { useEffect, useState } from "react"
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native"
-import { useThemeContext } from "@/context/ThemeContext"
-import { withAuth } from "@/utils/withAuth";
+import { useEffect, useMemo, useState } from "react"
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native"
 
-import { fetchProtectedEndpoint } from "@/utils/apiCalls";
-import { BACKEND_URL } from "@/config";
-import LoadingScreen from "@/components/core/LoadingScreen";
-import { usePage } from "@/context/PageContext";
-
+import { withAuth } from "@/utils/withAuth"
+import { fetchProtectedEndpoint } from "@/utils/apiCalls"
+import { BACKEND_URL } from "@/config"
+import LoadingScreen from "@/components/core/LoadingScreen"
+import { usePage } from "@/context/PageContext"
+import { FONT } from "@/constants/Fonts"
+import { Panel, PanelTitle, StatCard, WeekBars, useDashboardColours, styles as parts } from "@/components/dashboard/DashboardParts"
 
 /**
  * AdminPage Component
  *
- * This component serves as the admin dashboard, providing functionalities to manage users and approvals.
- * It displays two main sections:
- *   1. Council Users Pending Approval: A table listing council user accounts awaiting admin approval.
- *      - Allows admins to approve or reject user registration requests.
- *   2. All Registered Users: A table displaying all registered users in the system.
- *      - Shows user details such as name, email, and account type.
- *
- * Key Features:
- *   - Displays mock data for pending approvals and registered users.
- *   - Implements approve and reject functionalities for pending council users.
- *   - Uses a theme context for data and logic.
- *   - Utilizes withAuth to ensure only authorized users (ADMIN role) can access the page.
- *
- * Mock Data:
- *   - mockPendingApprovals: Array of mock user objects representing pending council approvals.
- *   - mockUsers: Array of mock user objects representing all registered users.
- *
- * Functions:
- *   - handleApprove(userId: number): Approves a pending council user with the given ID.
- *   - handleReject(userId: number): Rejects a pending council user with the given ID.
+ * The admin's overview of the whole app: how many residents and recycling points
+ * there are, how much was recycled over the last week, which councils are approved,
+ * and the council accounts waiting to be approved.
+ * Data comes from GET /admin/overview and GET /pending-councils.
  */
 
+type PendingCouncil = {
+  gss_code: string
+  council_name: string
+  requested_by: string
+  requested_on: string
+}
+
+type Overview = {
+  residents: number
+  recycling_points: number
+  councils: { gss_code: string; name: string; points: number }[]
+  items_last_week: { date: string; items: number }[]
+  items_all_time: number
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+// "today", "yesterday" or "3 days ago"
+const howLongAgo = (isoDate: string) => {
+  const [y, m, d] = isoDate.split("-").map(Number)
+  const today = new Date()
+  const days = Math.round((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(y, m - 1, d)) / 86_400_000)
+  if (days <= 0) return "today"
+  if (days === 1) return "yesterday"
+  return `${days} days ago`
+}
 
 const AdminPage = () => {
-  const { theme } = useThemeContext()
-  const [pendingGssCodes, setPendingGssCodes] = useState<string[] | null>(null);
-  const { showToastNotification } = usePage();
+  const c = useDashboardColours()
+  const { theme } = c
+  const { width } = useWindowDimensions()
+  const wide = width >= 900
+  const { showToastNotification } = usePage()
+  const [overview, setOverview] = useState<Overview | null>(null)
+  const [pending, setPending] = useState<PendingCouncil[] | null>(null)
 
-  // Define styles at the top of the component using theme
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.bg_primary,
-      // Remove all padding to ensure content is flush with edges
-    },
-    content: {
-      alignItems: "flex-start",
-      width: "100%",
-      paddingTop: 20,
-      paddingBottom: 20,
-      paddingRight: 40,
-      // No left padding to push content left
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.secondary,
-      marginBottom: 20,
-      marginLeft: 20,
-    },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: theme.secondary,
-      marginTop: 30,
-      marginBottom: 10,
-      marginLeft: 20,
-    },
-    table: {
-      borderWidth: 1,
-      borderColor: theme.primary,
-      borderRadius: 8,
-      overflow: "hidden",
-      marginBottom: 20,
-      width: "95%",
-      marginLeft: 0, // No left margin
-    },
-    tableHeader: {
-      flexDirection: "row",
-      backgroundColor: theme.primary,
-      padding: 10,
-    },
-    headerCell: {
-      flex: 1,
-      color: "white",
-      fontWeight: "bold",
-      textAlign: "left",
-      justifyContent: "center"
-    },
-    row: {
-      flexDirection: "row",
-      borderBottomWidth: 1,
-      borderBottomColor: `${theme.primary}30`,
-      padding: 10,
-    },
-    cell: {
-      flex: 1,
-      padding: 10,
-      color: theme.text,
-    },
-    badge: {
-      paddingVertical: 2,
-      paddingHorizontal: 8,
-      borderRadius: 12,
-      alignSelf: "flex-start",
-    },
-    councilBadge: {
-      backgroundColor: `${theme.secondary}20`,
-    },
-    normalBadge: {
-      backgroundColor: `${theme.primary}20`,
-    },
-    badgeText: {
-      fontSize: 12,
-      color: theme.secondary,
-    },
-    actionCell: {
-      flex: 1,
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: 8,
-    },
-    approveButton: {
-      backgroundColor: theme.primary,
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: theme.text,
-    },
-    rejectButton: {
-      backgroundColor: "#ef444420", //need red to colour theme
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: theme.text,
-    },
-    buttonText: {
-      fontSize: 12,
-      fontWeight: "500",
-    },
-    approveText: {
-      color: theme.text,
-    },
-    rejectText: {
-      color: theme.text,
-    },
-    emptyState: {
-      padding: 20,
-      alignItems: "center",
-    },
-    emptyText: {
-      color: theme.text,
-      opacity: 0.6,
-    },
-  })
-  
-    useEffect(() => {
-        const fetchPendingApprovals = async () => {
-            try {
-                const response = await fetchProtectedEndpoint(`${BACKEND_URL}/pending-councils`);
-
-                if (!response.ok) {
-                    setPendingGssCodes([]);
-                    return;
-                }
-
-                const data = await response.json();
-                setPendingGssCodes(data.pending_councils.map((council: { gss_code: string }) => council.gss_code));
-            } catch (error) {
-                console.error("Error fetching pending councils:", error);
-            }
-        };
-        fetchPendingApprovals();
-    }, []); 
-
-  const handleApprove = (approvedGssCode: string) => {
-    if (!pendingGssCodes) return;
-    const postApproval = async () => {
-        const res = await fetchProtectedEndpoint(`${BACKEND_URL}/council-approval/${approvedGssCode}`,
-                                                 {method: "PATCH"});
-        if (!res.ok) {
-            showToastNotification("Error, please try again.");
-            return;
-        }
-        showToastNotification("Approved!");
-        setPendingGssCodes(pendingGssCodes.filter((gssCode: string) => gssCode !== approvedGssCode))
-    };
-    postApproval();
+  const load = async () => {
+    const [overviewRes, pendingRes] = await Promise.all([
+      fetchProtectedEndpoint(`${BACKEND_URL}/admin/overview`),
+      fetchProtectedEndpoint(`${BACKEND_URL}/pending-councils`),
+    ])
+    if (!overviewRes.ok || !pendingRes.ok) {
+      showToastNotification("Couldn't load the admin data, please try again.")
+      return
+    }
+    setOverview(await overviewRes.json())
+    setPending((await pendingRes.json()).pending_councils)
   }
-  
-  if (!pendingGssCodes) return <LoadingScreen />;
 
-  // Use inline styles for direct positioning
+  useEffect(() => {
+    load()
+  }, [])
+
+  const handleApprove = async (council: PendingCouncil) => {
+    const res = await fetchProtectedEndpoint(`${BACKEND_URL}/council-approval/${council.gss_code}`, { method: "PATCH" })
+    if (!res.ok) {
+      showToastNotification("Error, please try again.")
+      return
+    }
+    showToastNotification(`${council.council_name} approved`)
+    load()
+  }
+
+  const week = useMemo(() => {
+    if (!overview) return null
+    const days = overview.items_last_week.map((d, i, all) => {
+      const day = DAY_NAMES[new Date(d.date + "T12:00:00").getDay()]
+      return { label: i === all.length - 1 ? "Today" : day.slice(0, 3), fullName: day, value: d.items }
+    })
+    return { days, total: days.reduce((sum, d) => sum + d.value, 0) }
+  }, [overview])
+
+  if (!overview || !pending || !week) return <LoadingScreen />
+
+  const councilCount = overview.councils.length
+  const muted = { fontFamily: FONT.regular, fontSize: 16, color: theme.text_muted }
+
   return (
-      <ScrollView
-        style={{height: "100%"}}
-        contentContainerStyle={{
-          alignItems: "flex-start",
-          justifyContent: "center",
-          flexGrow: 1,
-          padding: 10
-        }}
-      >
-        <Text style={[styles.title, { marginLeft: 20 }]}>Admin Dashboard</Text>
+    <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={{ width: "100%", maxWidth: 1200, alignSelf: "center", paddingHorizontal: wide ? 24 : 8, paddingTop: 24 }}>
 
-        {/* Pending Approvals Table */}
-        <Text style={[styles.sectionTitle, { marginLeft: 20 }]}>Council Users Pending Approval</Text>
-        <View style={[styles.table]}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.headerCell, { flex: 0.5 }, {textAlign: "center"}]}>Area code</Text>
-            <Text style={[styles.headerCell, { flex: 0.5 }, {textAlign: "center"}]}>Actions</Text>
-          </View>
+        <Text style={{ fontFamily: FONT.semiBold, fontSize: 16, color: theme.accent }}>Admin</Text>
+        <Text style={{ fontFamily: FONT.bold, fontSize: wide ? 44 : 32, letterSpacing: -1.5, color: theme.text, marginTop: 6 }} accessibilityRole="header">
+          How EcoNexus is doing
+        </Text>
+        <Text style={{ fontFamily: FONT.regular, fontSize: wide ? 20 : 17, color: theme.text_muted, marginTop: 10 }}>
+          Everyone using it, and councils waiting to be let in.
+        </Text>
 
-          {pendingGssCodes.length > 0 ? (
-            pendingGssCodes.map((gssCode: string) => (
-              <View style={styles.row}>
-                <Text style={[styles.cell, { flex: 0.5 }]}>{gssCode}</Text>
-                <View style={[styles.actionCell, { flex: 0.5 }]}>
-                  <Pressable style={styles.approveButton} onPress={() => handleApprove(gssCode)}>
-                    <Text style={[styles.buttonText, styles.approveText]}>Approve</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No pending approvals</Text>
-            </View>
-          )}
+        <View style={[parts.row, { marginTop: 28 }]}>
+          <StatCard label="Waiting for you" value={`${pending.length}`} unit={pending.length === 1 ? "council to approve" : "councils to approve"} highlight />
+          <StatCard label="Residents" value={overview.residents.toLocaleString()} />
+          <StatCard label="Recycling points" value={overview.recycling_points.toLocaleString()} unit={`across ${councilCount} ${councilCount === 1 ? "council" : "councils"}`} />
+          <StatCard label="Items this week" value={week.total.toLocaleString()} unit={`${overview.items_all_time.toLocaleString()} all time`} />
         </View>
-      </ScrollView>
+
+        <View style={[parts.row, { marginTop: 16 }]}>
+          <Panel style={{ flexGrow: 2, flexBasis: 520, minWidth: 0 }}>
+            <PanelTitle title="Councils waiting for approval" subtitle="Approving lets them add and edit points in their area." />
+            {pending.length === 0 ? (
+              <Text style={muted}>Nothing waiting. Nice.</Text>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {pending.map((council) => (
+                  <View
+                    key={council.gss_code + council.requested_by}
+                    style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 14, padding: 16, borderRadius: 14, backgroundColor: theme.bg_primary }}
+                  >
+                    <View style={{ flexGrow: 1, flexBasis: 220 }}>
+                      <Text style={{ fontFamily: FONT.bold, fontSize: 18, color: theme.text }}>{council.council_name}</Text>
+                      <Text style={{ fontFamily: FONT.regular, fontSize: 15, color: theme.text_muted, marginTop: 4 }}>
+                        {council.requested_by} · area {council.gss_code} · asked {howLongAgo(council.requested_on)}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => handleApprove(council)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Approve ${council.council_name}`}
+                      style={({ hovered }: any) => ({
+                        paddingVertical: 11, paddingHorizontal: 20, borderRadius: 10,
+                        backgroundColor: theme.accent, opacity: hovered ? 0.85 : 1,
+                      })}
+                    >
+                      <Text style={{ fontFamily: FONT.bold, fontSize: 15, color: theme.on_accent }}>Approve</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Panel>
+
+          <Panel style={{ flexGrow: 1, flexBasis: 320, minWidth: 0 }}>
+            <PanelTitle title="Approved councils" />
+            {overview.councils.length === 0 ? (
+              <Text style={muted}>No councils yet.</Text>
+            ) : (
+              overview.councils.map((council) => (
+                <View key={council.gss_code} style={{ flexDirection: "row", gap: 12, paddingVertical: 12, borderTopWidth: 1, borderColor: c.border }}>
+                  <Text style={{ flex: 1, fontFamily: FONT.semiBold, fontSize: 15, color: theme.text }}>{council.name}</Text>
+                  <Text style={{ fontFamily: FONT.regular, fontSize: 15, color: theme.text_muted }}>{council.points} points</Text>
+                </View>
+              ))
+            )}
+          </Panel>
+        </View>
+
+        <Panel style={{ marginTop: 16 }}>
+          <PanelTitle title="Items recycled, last 7 days" subtitle="Everything scanned across every council." />
+          <WeekBars days={week.days} />
+        </Panel>
+
+        <Text style={{ fontFamily: FONT.regular, fontSize: 14, color: theme.text_muted, marginTop: 18 }}>
+          Demo data resets whenever the server restarts.
+        </Text>
+      </View>
+    </ScrollView>
   )
 }
 
-export default withAuth(AdminPage, ["ADMIN"]);
+export default withAuth(AdminPage, ["ADMIN"])

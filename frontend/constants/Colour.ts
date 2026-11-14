@@ -21,9 +21,12 @@
  *   - primary: The primary brand color (Cambridge Blue).
  *   - secondary: The secondary brand color (Hunter Green).
  *   - tertiary: The tertiary brand color (Dark Green).
- *   - bg_primary: The primary background color (Platinum for light, Eerie Black for dark).
- *   - bg_secondary: The secondary background color (Baby Powder for light, Night for dark).
- *   - text: The text color (Black for light, White for dark).
+ *   - bg_primary: The primary background color (Platinum for light, deep forest green for dark).
+ *   - bg_secondary: The secondary background color (Baby Powder for light, forest green for dark).
+ *   - text: The text color (Black for light, off white for dark).
+ *   - text_muted: Softer text for paragraphs and captions.
+ *   - accent: Highlight color for main buttons and emphasis (fern on light, lime on dark).
+ *   - on_accent: Text color to use on top of the accent.
  *   - type: A string indicating the theme type ("light" or "dark").
  */
 
@@ -37,9 +40,13 @@ export const COLOUR = {
       TEXT: "#000000ff",               // Black
   },
   DARK: {
-      BACKGROUND_PRIMARY: "#181818ff", // Eerie Black
-      BACKGROUND_SECONDARY: "#141414ff", // Night
-      TEXT: "#ffffffff",               // White
+      BACKGROUND_PRIMARY: "#0e1b13ff", // Deep forest
+      BACKGROUND_SECONDARY: "#16291dff", // Forest
+      TEXT: "#eef5efff",               // Off white
+  },
+  ACCENT: {
+      LIGHT: "#2f6b45ff",              // Fern, for buttons and highlights on light backgrounds
+      DARK: "#c6f36bff",               // Lime, for buttons and highlights on dark backgrounds
   },
 };
 
@@ -50,6 +57,9 @@ const lightTheme = {
   bg_primary: COLOUR.LIGHT.BACKGROUND_PRIMARY,
   bg_secondary: COLOUR.LIGHT.BACKGROUND_SECONDARY,
   text: COLOUR.LIGHT.TEXT,
+  text_muted: "#3a4a40ff",
+  accent: COLOUR.ACCENT.LIGHT,
+  on_accent: "#ffffffff",
   type: "light",
 };
 
@@ -60,6 +70,9 @@ const darkTheme = {
   bg_primary: COLOUR.DARK.BACKGROUND_PRIMARY,
   bg_secondary: COLOUR.DARK.BACKGROUND_SECONDARY,
   text: COLOUR.DARK.TEXT,
+  text_muted: "#c3d3c7ff",
+  accent: COLOUR.ACCENT.DARK,
+  on_accent: "#0e1b13ff",
   type: "dark",
 };
 

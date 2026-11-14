@@ -43,11 +43,14 @@ export function withAuth<P extends object>(WrappedComponent: React.ComponentType
 
         useEffect(() => {
             if (!navigationState?.key) return;
-            if (!isUserLoggedIn || !userData?.userRole || !role.includes(userData.userRole)) {
+            // Just after logging in there's a moment where we're logged in but the user's details
+            // haven't loaded yet, so only send them away once we know their role doesn't fit
+            const wrongRole = isUserLoggedIn && userData?.userRole && !role.includes(userData.userRole);
+            if (!isUserLoggedIn || wrongRole) {
                 showToastNotification("Log in to access this page.");
                 router.replace("/login");
             }
-        }, [isUserLoggedIn, navigationState.key]);
+        }, [isUserLoggedIn, userData?.userRole, navigationState?.key]);
 
         // Don't render (and fire off the page's requests) for a role that's about to be sent away
         if (!isUserLoggedIn || !userData?.userRole || !role.includes(userData.userRole)) return null;

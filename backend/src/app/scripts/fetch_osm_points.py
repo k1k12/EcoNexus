@@ -17,13 +17,20 @@ Or save the Overpass response yourself and convert it:
 import argparse
 import json
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, timezone, datetime
 from pathlib import Path
 
 OUTPUT = Path(__file__).parent / "data" / "newcastle_recycling_points.json"
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# The main server is often busy, so fall back to public mirrors
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+]
 
 # south, west, north, east: roughly the city of Newcastle upon Tyne
 BBOX = (54.95, -1.78, 55.07, -1.53)
@@ -69,13 +76,23 @@ def overpass_query() -> str:
 
 def download() -> dict:
     body = urllib.parse.urlencode({"data": overpass_query()}).encode()
-    request = urllib.request.Request(
-        OVERPASS_URL,
-        data=body,
-        headers={"User-Agent": "EcoNexus demo data script (https://github.com/k1k12/EcoNexus)"},
-    )
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return json.load(response)
+    errors = []
+    for attempt in range(2):
+        for url in OVERPASS_URLS:
+            request = urllib.request.Request(
+                url,
+                data=body,
+                headers={"User-Agent": "EcoNexus demo data script (https://github.com/k1k12/EcoNexus)"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=120) as response:
+                    return json.load(response)
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+                errors.append(f"{url}: {e}")
+                print(f"Couldn't get data from {url} ({e}), trying the next server...")
+        if attempt == 0:
+            time.sleep(10)
+    raise SystemExit("Every Overpass server failed:\n  " + "\n  ".join(errors) + "\nTry again in a few minutes.")
 
 
 def parse_opening_hours(value):

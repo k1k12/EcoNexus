@@ -65,7 +65,8 @@ const lightTheme = {
 
 const darkTheme = {
   primary: COLOUR.BRAND_PRIMARY,
-  secondary: COLOUR.BRAND_SECONDARY,
+  // Hunter green is too dark to read on the dark background, so dark mode uses a light sage
+  secondary: "#8fc49cff",
   tertiary: COLOUR.BRAND_TERTIARY,
   bg_primary: COLOUR.DARK.BACKGROUND_PRIMARY,
   bg_secondary: COLOUR.DARK.BACKGROUND_SECONDARY,

@@ -90,10 +90,10 @@ const DemoAccountsModal = ({ visible, onClose }: DemoAccountsModalProps) => {
       paddingVertical: 6,
       paddingHorizontal: 14,
       borderRadius: 5,
-      backgroundColor: theme.secondary,
+      backgroundColor: theme.accent,
     },
     buttonText: {
-      color: "#ffffff",
+      color: theme.on_accent,
       fontWeight: 700,
     },
     note: {

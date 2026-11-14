@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { Modal, View, Text, StyleSheet, Pressable, ScrollView, Platform } from "react-native";
-import { router } from "expo-router";
 
 import { useThemeContext } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
 import { DEMO_ACCOUNTS, DemoAccount } from "@/constants/DemoAccounts";
+import { useDemoLogin } from "@/hooks/useDemoLogin";
 
 /**
  * DemoAccountsModal Component
@@ -25,25 +24,12 @@ type DemoAccountsModalProps = {
 
 const DemoAccountsModal = ({ visible, onClose }: DemoAccountsModalProps) => {
   const { theme } = useThemeContext();
-  const { login, logout, isUserLoggedIn } = useAuth();
-  const [loadingRole, setLoadingRole] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { logInAs: demoLogIn, loadingRole, error } = useDemoLogin();
 
   const logInAs = async (account: DemoAccount) => {
-    setError(null);
-    setLoadingRole(account.role);
-    if (isUserLoggedIn) {
-      await logout();
+    if (await demoLogIn(account)) {
+      onClose();
     }
-    const result = await login(account.email, account.password);
-    setLoadingRole(null);
-    if (!result.success) {
-      // The free server sleeps when nobody's used it for a while
-      setError("Couldn't log in. The server may be waking up, so try again in a minute.");
-      return;
-    }
-    onClose();
-    router.navigate(account.route);
   };
 
   const styles = StyleSheet.create({
@@ -104,10 +90,10 @@ const DemoAccountsModal = ({ visible, onClose }: DemoAccountsModalProps) => {
       paddingVertical: 6,
       paddingHorizontal: 14,
       borderRadius: 5,
-      backgroundColor: theme.secondary,
+      backgroundColor: theme.accent,
     },
     buttonText: {
-      color: "#ffffff",
+      color: theme.on_accent,
       fontWeight: 700,
     },
     note: {

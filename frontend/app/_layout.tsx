@@ -2,6 +2,14 @@ import { AuthContextProvider } from '@/context/AuthContext';
 import PageContextProvider from '@/context/PageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Slot } from 'expo-router';
+import { useFonts } from 'expo-font';
+import {
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk';
+import { Caveat_700Bold } from '@expo-google-fonts/caveat';
 
 /**
  * Root Layout Component
@@ -31,6 +39,15 @@ import { Slot } from 'expo-router';
  */
 
 export default function Layout() {
+    // Not waiting for these: text shows in the default font until they arrive
+    useFonts({
+        SpaceGrotesk_400Regular,
+        SpaceGrotesk_500Medium,
+        SpaceGrotesk_600SemiBold,
+        SpaceGrotesk_700Bold,
+        Caveat_700Bold,
+    });
+
     return (
         <ThemeProvider>
             <PageContextProvider>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {View,Text,Image,StyleSheet,Pressable,  Platform,} from "react-native";
+import {View,Text,Image,StyleSheet,Pressable,  Platform, useWindowDimensions} from "react-native";
 import ThemeToggle from "@/components/core/ThemeToggle";
 import LogoDark from "@/assets/images/logo-dark.png";
 import LogoLight from "@/assets/images/logo-light.png";
@@ -10,6 +10,7 @@ import { useThemeContext } from "@/context/ThemeContext";
 import { router } from "expo-router";
 import DemoAccountsModal from "@/components/core/DemoAccountsModal";
 import { DEMO_ACCOUNTS_ENABLED } from "@/constants/DemoAccounts";
+import { FONT } from "@/constants/Fonts";
 
 const DEMO_SEEN_KEY = "econexus-demo-popup-seen";
 // The header mounts again on every layout change, so only open the popup once per page load
@@ -85,6 +86,9 @@ const Header = () => {
 
   
   const isWeb = Platform.OS === "web";
+  // On narrow screens the header keeps to icons and short labels so nothing runs off the edge
+  const { width } = useWindowDimensions();
+  const narrow = width < 640;
 
   const handleSignIn = () => {
     router.navigate("/login");
@@ -109,8 +113,10 @@ const Header = () => {
     },
     logoText: {
       marginLeft: 8,
-      fontSize: 20,
-      color: theme.primary,
+      fontSize: 21,
+      fontFamily: FONT.bold,
+      letterSpacing: -0.5,
+      color: theme.text,
     },
     flexGrow: {
       flex: 1,
@@ -123,7 +129,7 @@ const Header = () => {
     signInRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginLeft: 20, 
+      marginLeft: narrow ? 8 : 20,
     },
     
     signInTextWrapper: {
@@ -135,24 +141,24 @@ const Header = () => {
     },
     
     demoButton: {
-      marginRight: 16,
+      marginRight: narrow ? 8 : 16,
       paddingVertical: 4,
       paddingHorizontal: 10,
       borderRadius: 5,
       borderWidth: 1,
-      borderColor: theme.primary,
+      borderColor: theme.accent,
     },
 
     demoButtonText: {
       fontSize: 14,
-      fontWeight: 700,
-      color: theme.primary,
+      fontFamily: FONT.semiBold,
+      color: theme.text,
     },
 
     signInText: {
       fontSize: 15,
-      fontWeight: 700,
-      color: theme.primary,
+      fontFamily: FONT.semiBold,
+      color: theme.text,
     },
   });
     
@@ -162,7 +168,7 @@ const Header = () => {
       <View style={styles.left}>
         <Pressable onPress={() => router.navigate("/")} style={{flexDirection: "row", alignItems: "center"}}>
             <Image source={logoSource} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.logoText}>Eco Nexus</Text>
+            <Text style={styles.logoText}>EcoNexus</Text>
         </Pressable>
       </View>
 
@@ -176,7 +182,7 @@ const Header = () => {
             accessibilityRole="button"
             accessibilityLabel="Show the demo accounts"
           >
-            <Text style={styles.demoButtonText}>Demo accounts</Text>
+            <Text style={styles.demoButtonText}>{narrow ? "Demo" : "Demo accounts"}</Text>
           </Pressable>
         )}
         <ThemeToggle />
@@ -187,12 +193,12 @@ const Header = () => {
             </Pressable>
           ) : (
             <>
-              {isWeb && (
+              {isWeb && !narrow && (
                 <Pressable style={styles.signInTextWrapper} onPress={handleSignIn}>
                   <Text style={styles.signInText}>Sign In / Create Account</Text>
                 </Pressable>
               )}
-              <Pressable style={styles.signInIconWrapper} onPress={handleSignIn}>
+              <Pressable style={styles.signInIconWrapper} onPress={handleSignIn} accessibilityRole="button" accessibilityLabel="Sign in or create an account">
                 <SignInIcon stroke={theme.primary} />
               </Pressable>
             </>

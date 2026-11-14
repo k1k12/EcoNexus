@@ -30,10 +30,11 @@ import Quagga from "@ericblade/quagga2";
 
 type BarcodeScannerProps = {
     onBarcodeScanned: (barcodeValue: string) => void;
+    onError?: (message: string) => void;
     style?: React.CSSProperties;
 };
 
-const BarcodeScanner = ({ onBarcodeScanned, style}: BarcodeScannerProps) => {
+const BarcodeScanner = ({ onBarcodeScanned, onError, style}: BarcodeScannerProps) => {
     const videoRef = useRef<any>(null);
 
     useEffect(() => {
@@ -63,7 +64,8 @@ const BarcodeScanner = ({ onBarcodeScanned, style}: BarcodeScannerProps) => {
             },
             (err: any) => {
                 if (err) {
-                    console.error(err);
+                    // Usually no camera, or the visitor said no to the permission prompt
+                    onError?.("We couldn't open your camera. Check the browser has permission, or type the barcode instead.");
                     return;
                 }
                 // Center the injected video manually

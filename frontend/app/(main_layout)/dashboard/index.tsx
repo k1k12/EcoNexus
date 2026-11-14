@@ -148,9 +148,10 @@ const Dashboard: React.FC = () => {
           materialPercentages,
           improvementOverLastWeek: fetchedDashboardData.progress.improvement_over_last_week,
           avgItemsPerWeekOverLastMonth: fetchedDashboardData.progress.average_items_per_week_over_last_month,
-          turtlesSaved: fetchedDashboardData.environmental_impact.turtles_saved,
-          treesSaved: fetchedDashboardData.environmental_impact.trees_saved,
-          co2Saved: fetchedDashboardData.environmental_impact.co2_saved,
+          // Rounded to 2 decimal places so floating point noise (0.9500000000000001) doesn't show
+          turtlesSaved: Math.round(fetchedDashboardData.environmental_impact.turtles_saved * 100) / 100,
+          treesSaved: Math.round(fetchedDashboardData.environmental_impact.trees_saved * 100) / 100,
+          co2Saved: Math.round(fetchedDashboardData.environmental_impact.co2_saved * 100) / 100,
       });
   }, [fetchedDashboardData, theme.primary, theme.secondary, activeSegment]);
 

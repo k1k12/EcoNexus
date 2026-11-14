@@ -1,134 +1,86 @@
 import { MotiView } from "moti"
-import { Platform, StyleSheet, Text, View } from "react-native";
-import HoverButton from "../core/HoverButton";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import Svg, { Path } from "react-native-svg";
+
 import { useThemeContext } from "@/context/ThemeContext";
-import ArrowIcon from "@/assets/icons/arrow";
 import { useScanContext } from "@/context/ScanContext";
+import { FONT } from "@/constants/Fonts";
+import { materialLabel, useDashboardColours } from "@/components/dashboard/DashboardParts";
 
 /**
  * ItemInfo Component
  *
- * This component displays detailed information about a scanned item, including its name, packaging material, and recyclability status.
- * It provides an option to navigate to a map showing nearby recycling points if the item is recyclable.
- *
- * Key Features:
- *   - Displays product name, packaging material, and recyclability status.
- *   - Provides a button to navigate to a map showing recycling points if the item is recyclable.
- *   - Uses the ThemeContext for styling.
- *   - Uses MotiView for animated transitions.
- *   - Uses the ScanContext to access the last scanned item and set the current step.
- *
- * Functionality:
- *   - Receives the last scanned item from the ScanContext.
- *   - Displays the item's name, packaging material, and recyclability status.
- *   - If the item is recyclable, displays a button that navigates to the map view.
- *   - Uses MotiView for animated transitions when the component is mounted or unmounted.
- *   - Provides a close button to close the details viewer.
+ * The result after a scan: the product, what its packaging is made of, and
+ * whether it can be recycled. Recyclable items get a button to the map of
+ * points that take that material.
  *
  * Props:
- *   - onClose: A function to call when the close button is pressed.
- *
- * Components:
- *   - HoverButton: A reusable button component with hover effect.
- *   - ArrowIcon: Displays an arrow icon.
- *   - MotiView: Used for animated transitions.
- *
- * Hooks:
- *   - useThemeContext: Provides access to the application's theme for styling.
- *   - useScanContext: Provides access to the last scanned item and setStep function.
+ *   - onClose: goes back to scanning.
  */
-
-const ItemInfo = ({onClose} : {onClose: () => void}) => {
-    const isWeb = Platform.OS === "web";
+const ItemInfo = ({ onClose }: { onClose: () => void }) => {
     const { theme } = useThemeContext();
-
+    const c = useDashboardColours();
+    const { width } = useWindowDimensions();
     const { lastScannedItem, setStep } = useScanContext();
 
     if (!lastScannedItem) return null;
 
-    console.log("ItemInfo lastScannedItem: ", lastScannedItem);
+    const material = materialLabel(lastScannedItem.material.name);
+    const recyclable = lastScannedItem.recyclable;
 
     return (
         <MotiView
-        key="info"
-        from={{opacity: 0}}
-        animate={{opacity: 1}}
-        exit={{opacity: 0}}
-        style={{
-            flex: 1,
-            gap: 10,
-            width: "100%",
-            justifyContent: "center",
-            alignItems: "center",
-            maxWidth: 400
-        }}
+            key="info"
+            from={{ opacity: 0, translateY: 8 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            exit={{ opacity: 0 }}
+            style={{ flex: 1, width: "100%", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }}
         >
-            <View style={[styles.row, styles.underline, { alignItems: "center" }]}>
-              <HoverButton
-                onClick={onClose}
-                style={{
-                  borderWidth: 0,
-                  width: 40,
-                }}
-                notHoveredColor={theme.bg_primary}
-                hoveredColor={theme.bg_secondary}
-              >
-                <ArrowIcon rotation={180} width={20} height={20} stroke={theme.primary}/>
-              </HoverButton>
+            <View style={{ width: "100%", maxWidth: 520 }}>
+                <Pressable onPress={onClose} accessibilityRole="button" style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44, marginBottom: 8 }}>
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                        <Path d="M19 12H5M11 6l-6 6 6 6" stroke={theme.text_muted} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                    <Text style={{ fontFamily: FONT.semiBold, fontSize: 15, color: theme.text_muted }}>Back to scanning</Text>
+                </Pressable>
 
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ color: theme.text , fontSize: 18, fontWeight: "bold"}}>Product</Text>
-              </View>
+                <View style={{ borderRadius: 24, padding: width >= 600 ? 32 : 22, backgroundColor: c.panel, gap: 18 }}>
+                    <Text style={{ fontFamily: FONT.medium, fontSize: 15, color: theme.text_muted }}>Here's what we found</Text>
+                    <Text style={{ fontFamily: FONT.bold, fontSize: 34, lineHeight: 38, letterSpacing: -1, color: theme.text, marginTop: -10 }} accessibilityRole="header">{lastScannedItem.name}</Text>
 
-              <View style={{ width: 40 }} />
-            </View>            
-            <View style={styles.row}>
-                <Text style={[styles.headerText, {color: theme.primary}]}>Product name</Text> 
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        <Text style={{ paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, overflow: "hidden", backgroundColor: c.track, fontFamily: FONT.bold, fontSize: 15, color: theme.text }}>{material}</Text>
+                        <Text style={{
+                            paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, overflow: "hidden",
+                            fontFamily: FONT.bold, fontSize: 15,
+                            backgroundColor: recyclable ? theme.accent : "transparent",
+                            color: recyclable ? theme.on_accent : theme.text,
+                            borderWidth: recyclable ? 0 : 1.5, borderColor: theme.text_muted,
+                        }}>
+                            {recyclable ? "Recyclable" : "Not recyclable"}
+                        </Text>
+                    </View>
+
+                    <Text style={{ fontFamily: FONT.regular, fontSize: 17, lineHeight: 25, color: theme.text_muted }}>
+                        {recyclable
+                            ? `The packaging is ${material.toLowerCase()}, which can be recycled. Take it to a point that accepts ${material.toLowerCase()}.`
+                            : `The packaging is ${material.toLowerCase()}, which EcoNexus doesn't know a recycling point for. Check the label on the packaging for how to get rid of it.`}
+                    </Text>
+
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                        {recyclable && (
+                            <Pressable onPress={() => setStep("MAP")} accessibilityRole="button" style={{ minHeight: 48, paddingHorizontal: 22, borderRadius: 12, backgroundColor: theme.accent, justifyContent: "center" }}>
+                                <Text style={{ fontFamily: FONT.bold, fontSize: 16, color: theme.on_accent }}>Find a point near me</Text>
+                            </Pressable>
+                        )}
+                        <Pressable onPress={onClose} accessibilityRole="button" style={{ minHeight: 48, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1.5, borderColor: c.border, justifyContent: "center" }}>
+                            <Text style={{ fontFamily: FONT.semiBold, fontSize: 16, color: theme.text }}>Scan something else</Text>
+                        </Pressable>
+                    </View>
+                </View>
             </View>
-            <View style={styles.row}>
-                <Text style={{color: theme.text}}>{lastScannedItem.name}</Text> 
-            </View>
-            <View style={styles.row}>
-                <Text style={[styles.headerText, {color: theme.primary}]}>Packaging</Text> 
-            </View>
-            <View style={styles.row}>
-                <Text style={{color: theme.text}}>{lastScannedItem.material.name}</Text> 
-            </View>
-            <View style={styles.row}>
-                <Text style={[styles.headerText, {color: theme.primary}]}>Can be recycled?</Text> 
-            </View>
-            <View style={styles.row}>
-                <Text style={{color: theme.text}}>{lastScannedItem.recyclable ? "Yes" : "No"}</Text> 
-            </View>
-            {lastScannedItem.recyclable && (
-            <View style={styles.row}>
-                <HoverButton onClick={() => {setStep("MAP")}}>
-                    Show recycling points
-                </HoverButton>
-            </View>
-            )}
         </MotiView>
     )
 }
 
 export default ItemInfo;
-
-const styles = StyleSheet.create({
-    row : {
-        paddingVertical: 5,
-        width: "100%",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center"
-    },
-    underline : {
-        width: "100%",
-        borderBottomWidth: 1,
-        borderBottomColor: "grey",
-    },
-    headerText : {
-        textAlign: "center", 
-        fontSize: 18, 
-        fontWeight: "bold"
-    }
-});

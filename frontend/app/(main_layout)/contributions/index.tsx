@@ -157,7 +157,7 @@ const Contributions = () => {
             <P>The rest of the team built the app itself in Expo and React Native.</P>
           </Entry>
 
-          <Entry date="13 Nov 2026" title="Getting it to run again">
+          <Entry date="11 to 14 Nov 2026" title="Getting it to run again">
             <P>
               A year and a half later it didn't start. A bcrypt update had broken password hashing, the database had two
               migration branches that disagreed, and the Docker image was missing a package.
@@ -171,7 +171,7 @@ const Contributions = () => {
             <P>All fixed, each in its own small commit, before anything went live.</P>
           </Entry>
 
-          <Entry date="13 Nov 2026" title="Putting it online">
+          <Entry date="same week" title="Putting it online">
             <P>
               The database is on <Text style={strong}>Neon</Text> in London, the API runs in Docker on{" "}
               <Text style={strong}>Render</Text>, and the site is on <Text style={strong}>Cloudflare Pages</Text> at
@@ -188,7 +188,7 @@ const Contributions = () => {
             </P>
           </Entry>
 
-          <Entry date="14 Nov 2026" title="Redesigning it">
+          <Entry date="same week" title="Redesigning it">
             <P>
               The original look was plain, and the dashboards were hard to read: a pie chart with 16 slices, and an
               "environmental impact" box that said things like 0.9500000000000001 kg. Before changing any code I mocked up
@@ -211,7 +211,7 @@ const Contributions = () => {
             <BeforeAfter before={IMG.scanBefore} after={IMG.scanAfter} note="Scan page: one-tap example barcodes, so you can try it without a product in your hand." />
           </Entry>
 
-          <Entry date="14 Nov 2026" title="Things that broke once it was live">
+          <Entry date="same week" title="Things that broke once it was live">
             <P>Using it on the real site turned up bugs I hadn't seen locally:</P>
             <Bullets items={[
               <Text><Text style={strong}>Every font was Times New Roman.</Text> Expo keeps font files inside a node_modules folder, and Cloudflare Pages doesn't upload those. I moved the fonts into the app's own assets.</Text>,
@@ -224,7 +224,7 @@ const Contributions = () => {
             </View>
           </Entry>
 
-          <Entry date="14 Nov 2026" title="Log in, sign up and the admin page">
+          <Entry date="same week" title="Log in, sign up and the admin page">
             <P>
               The old login had a 2FA box that accepted any six digits, so it wasn't protecting anything. I took it out
               rather than pretend. Log in and sign up are one page now, with the demo logins right there.

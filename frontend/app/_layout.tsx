@@ -3,13 +3,6 @@ import PageContextProvider from '@/context/PageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Slot } from 'expo-router';
 import { useFonts } from 'expo-font';
-import {
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
-import { Caveat_700Bold } from '@expo-google-fonts/caveat';
 
 /**
  * Root Layout Component
@@ -39,13 +32,15 @@ import { Caveat_700Bold } from '@expo-google-fonts/caveat';
  */
 
 export default function Layout() {
-    // Not waiting for these: text shows in the default font until they arrive
+    // Not waiting for these: text shows in the default font until they arrive.
+    // The files live in assets/fonts rather than coming from the npm packages, because
+    // Cloudflare Pages doesn't upload anything inside a node_modules folder.
     useFonts({
-        SpaceGrotesk_400Regular,
-        SpaceGrotesk_500Medium,
-        SpaceGrotesk_600SemiBold,
-        SpaceGrotesk_700Bold,
-        Caveat_700Bold,
+        SpaceGrotesk_400Regular: require('@/assets/fonts/SpaceGrotesk_400Regular.ttf'),
+        SpaceGrotesk_500Medium: require('@/assets/fonts/SpaceGrotesk_500Medium.ttf'),
+        SpaceGrotesk_600SemiBold: require('@/assets/fonts/SpaceGrotesk_600SemiBold.ttf'),
+        SpaceGrotesk_700Bold: require('@/assets/fonts/SpaceGrotesk_700Bold.ttf'),
+        Caveat_700Bold: require('@/assets/fonts/Caveat_700Bold.ttf'),
     });
 
     return (

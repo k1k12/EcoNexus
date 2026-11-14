@@ -181,48 +181,12 @@ const RecyclingPointEditor = () => {
                     }}
                     />
                 </div>
-                <div style={style.row}>
-                    <p>Postcode</p>
-                    <input 
-                    style={{ ...style.input, background: theme.bg_secondary, color: theme.text }}
-                    value={displayPoint.postCode ? displayPoint.postCode : ""}
-                    placeholder="No postcode"
-                    onChange={(e) => {
-                        const filteredValue = e.target.value.replace(/[^a-zA-Z0-9]/g, ""); // Keeps only letters and numbers
-                        dispatchPointsStatesHistory({type: "UPDATE_PRESENT", value: {...displayPoint, postCode: filteredValue}});
-                    }} 
-                    onBlur={() => {
-                        dispatchPointsStatesHistory({type: "SAVE_PRESENT", value: displayPoint.id});
-                    }}
-                    />                        
-                </div>
                 <p style={{margin: 5}}>Timetable</p>
                 <div style={style.row}>
                     <TimetableEditor timetable={displayPoint.timetable} 
                     onChange={(updatedTimetable: TimeInterval[]) => {
                         dispatchPointsStatesHistory({type: "UPDATE", value: {...displayPoint, timetable: updatedTimetable}});
                     }}/>
-                </div>
-                <p style={{margin: 5}}>Description</p>
-                <div style={style.row}>
-                    <textarea style={{
-                        ...style.input, 
-                        textAlign: "left", 
-                        flexGrow: 1,
-                        background: theme.bg_secondary, 
-                        color: theme.text, 
-                        resize: "vertical",
-                        height: "auto"}} 
-                        value={displayPoint.description ? displayPoint.description : ""}
-                        placeholder="No description"
-                        onChange={(newVal) => {
-                            dispatchPointsStatesHistory({type: "UPDATE_PRESENT", 
-                                                        value: {...displayPoint, description: newVal.target.value}});
-                        }}
-                        onBlur={() => {
-                            dispatchPointsStatesHistory({type: "SAVE_PRESENT", value: displayPoint.id});
-                        }}
-                    />
                 </div>
                 <div style={{display: "flex", flexGrow: 1}}>
                     <HoverButton

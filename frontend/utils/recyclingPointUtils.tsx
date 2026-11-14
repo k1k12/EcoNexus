@@ -55,10 +55,10 @@ export function convertRecyclingPointFromBackend(point: any, materialsList: any[
         latitude: point.latitude,
         longitude: point.longitude,
         timetable: weeklyHoursToTimeInterval(point.times_open),
-        postCode: "FIXME no postcode backend", // backend doesn't store it (to discuss)
+        postCode: "", // the backend doesn't store postcodes yet, so the panels leave this out
         // sometimes we don't have the list of all materials, in that case materialList is simply array of material names without ids.
         type: materialsList.filter((material: any) => point.materials.includes(material.name?.toLowerCase() || material)),
-        description: "FIXME no description backend" //backend doesn't store it (to discuss)
+        description: "" // the backend doesn't store descriptions yet, so the panels leave this out
     }
 }
 

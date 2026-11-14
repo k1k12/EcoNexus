@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date, datetime, timedelta
+from sqlalchemy import func
 from sqlalchemy.future import select
-from app.database.models import Admin, User
+from app.database.models import Admin, Council, RecycleHistoryProductAssociation, RecyclingPoint, User
 from app.api.dependencies import get_db, get_current_user
 
 
@@ -21,17 +23,21 @@ async def get_pending_councils(
                 )
 
     result = await db.execute(
-        select(Admin)
+        select(Admin, User, Council)
+        .join(User, User.user_id == Admin.council_user_id)
+        .join(Council, Council.gss_code == Admin.gss_code)
         .filter(Admin.is_approved == False)  # Only pending approvals
+        .order_by(Admin.date)
     )
-
-    pending_councils = result.scalars().all()
 
     # Prepare response
     councils_data = []
-    for admin in pending_councils:
+    for admin, user, council in result.all():
         councils_data.append({
             "gss_code": admin.gss_code,
+            "council_name": council.name,
+            "requested_by": f"{user.first_name} {user.last_name}",
+            "requested_on": admin.date.isoformat(),
         })
 
     return {"pending_councils": councils_data}

@@ -453,6 +453,9 @@ const Home: React.FC = () => {
                 <Pressable onPress={() => router.navigate("/mission")} accessibilityRole="link">
                     <Text style={styles.footerLink}>Our Mission</Text>
                 </Pressable>
+                <Pressable onPress={() => router.navigate("/contributions")} accessibilityRole="link">
+                    <Text style={styles.footerLink}>What I did on it</Text>
+                </Pressable>
                 <Pressable onPress={() => Linking.openURL("https://github.com/k1k12/EcoNexus")} accessibilityRole="link">
                     <Text style={styles.footerLink}>Code on GitHub</Text>
                 </Pressable>

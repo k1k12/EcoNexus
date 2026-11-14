@@ -30,6 +30,7 @@ import { Camera, useCodeScanner, useCameraDevice, useCameraPermission, Code } fr
 
 type BarcodeScannerProps = {
     onBarcodeScanned: (barcodeValue: string) => void;
+    onError?: (message: string) => void; // accepted so the props match web; the native camera shows its own permission prompt
     style?: ViewStyle
 };
 

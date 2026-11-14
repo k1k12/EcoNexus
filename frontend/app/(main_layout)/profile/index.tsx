@@ -1,5 +1,6 @@
 "use client"
 
+import { COLOUR } from "@/constants/Colour";
 import { useState } from "react"
 import { View, Text, StyleSheet, TextInput, ScrollView, Platform, Alert } from "react-native"
 import { useThemeContext } from "@/context/ThemeContext"
@@ -134,7 +135,7 @@ const Profile = () => {
             borderRadius: 5,
         },
         editButtonBg: {
-            backgroundColor: theme.secondary,
+            backgroundColor: COLOUR.BRAND_SECONDARY,
         },
         errorButton: {
             backgroundColor: 'red',

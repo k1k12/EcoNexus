@@ -23,6 +23,7 @@ import { Text, View, ViewStyle } from "react-native";
 
 type BarcodeScannerProps = {
     onBarcodeScanned: (barcodeValue: string) => void;
+    onError?: (message: string) => void;
     style?: ViewStyle | React.CSSProperties
 };
 

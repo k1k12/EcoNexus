@@ -1,0 +1,446 @@
+{
+ "source": "© OpenStreetMap contributors",
+ "licence": "Open Database Licence (ODbL) 1.0, https://www.openstreetmap.org/copyright",
+ "fetched": "2026-11-14",
+ "bbox": [
+  54.95,
+  -1.78,
+  55.07,
+  -1.53
+ ],
+ "points": [
+  {
+   "osm": "node/10213891226",
+   "lat": 54.987852,
+   "lon": -1.573095,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/10746446137",
+   "lat": 55.057409,
+   "lon": -1.626631,
+   "materials": [
+    "Glass"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/11061535037",
+   "lat": 54.993816,
+   "lon": -1.705699,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/11061535049",
+   "lat": 54.976532,
+   "lon": -1.711766,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/11834797592",
+   "lat": 55.036897,
+   "lon": -1.709403,
+   "materials": [
+    "Plastic"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/13806300620",
+   "lat": 54.962063,
+   "lon": -1.600263,
+   "materials": [
+    "Plastic"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/1755133026",
+   "lat": 55.050254,
+   "lon": -1.746091,
+   "materials": [
+    "Glass",
+    "Metal",
+    "Paper",
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4393498242",
+   "lat": 54.954394,
+   "lon": -1.607752,
+   "materials": [
+    "Metal",
+    "PET",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4397659229",
+   "lat": 54.960144,
+   "lon": -1.611845,
+   "materials": [
+    "Glass",
+    "Metal",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4397687840",
+   "lat": 54.96161,
+   "lon": -1.603469,
+   "materials": [
+    "Metal",
+    "PET",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4398610795",
+   "lat": 54.963516,
+   "lon": -1.600947,
+   "materials": [
+    "Plastic"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4453586492",
+   "lat": 54.950365,
+   "lon": -1.724946,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4564946296",
+   "lat": 54.971131,
+   "lon": -1.660332,
+   "materials": [
+    "Textile"
+   ],
+   "centre": true,
+   "hours": null
+  },
+  {
+   "osm": "node/4587181899",
+   "lat": 54.968697,
+   "lon": -1.644509,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/4634786806",
+   "lat": 54.979485,
+   "lon": -1.586024,
+   "materials": [
+    "Glass",
+    "Metal",
+    "PET",
+    "Paper",
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/508408513",
+   "lat": 55.013178,
+   "lon": -1.66559,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/5233478941",
+   "lat": 54.979027,
+   "lon": -1.615353,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/5464912930",
+   "lat": 54.993478,
+   "lon": -1.609723,
+   "materials": [
+    "Cardboard",
+    "Metal",
+    "Paper",
+    "Plastic"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/5464912932",
+   "lat": 54.993605,
+   "lon": -1.610099,
+   "materials": [
+    "Cardboard",
+    "Metal",
+    "Paper",
+    "Plastic"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/5464912933",
+   "lat": 54.993177,
+   "lon": -1.609741,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/5464912941",
+   "lat": 54.993911,
+   "lon": -1.610057,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/564213713",
+   "lat": 54.957783,
+   "lon": -1.540474,
+   "materials": [
+    "Metal",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/6192925532",
+   "lat": 55.008494,
+   "lon": -1.578471,
+   "materials": [
+    "PET",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/6432349406",
+   "lat": 54.979699,
+   "lon": -1.609807,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": {
+    "monday": [
+     "00:01",
+     "23:59"
+    ],
+    "tuesday": [
+     "00:01",
+     "23:59"
+    ],
+    "wednesday": [
+     "00:01",
+     "23:59"
+    ],
+    "thursday": [
+     "00:01",
+     "23:59"
+    ],
+    "friday": [
+     "00:01",
+     "23:59"
+    ],
+    "saturday": [
+     "00:01",
+     "23:59"
+    ],
+    "sunday": [
+     "00:01",
+     "23:59"
+    ]
+   }
+  },
+  {
+   "osm": "node/6484586351",
+   "lat": 54.97661,
+   "lon": -1.581827,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/685890998",
+   "lat": 55.064887,
+   "lon": -1.554481,
+   "materials": [
+    "Glass",
+    "Metal"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/7208868385",
+   "lat": 55.006582,
+   "lon": -1.60291,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/7208868386",
+   "lat": 55.036089,
+   "lon": -1.564775,
+   "materials": [
+    "Cardboard",
+    "Metal",
+    "PET",
+    "Paper"
+   ],
+   "centre": false,
+   "hours": {
+    "monday": [
+     "00:01",
+     "23:59"
+    ],
+    "tuesday": [
+     "00:01",
+     "23:59"
+    ],
+    "wednesday": [
+     "00:01",
+     "23:59"
+    ],
+    "thursday": [
+     "00:01",
+     "23:59"
+    ],
+    "friday": [
+     "00:01",
+     "23:59"
+    ],
+    "saturday": [
+     "00:01",
+     "23:59"
+    ],
+    "sunday": [
+     "00:01",
+     "23:59"
+    ]
+   }
+  },
+  {
+   "osm": "node/765376576",
+   "lat": 55.057195,
+   "lon": -1.619669,
+   "materials": [
+    "Glass",
+    "Metal"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/796206538",
+   "lat": 55.038179,
+   "lon": -1.567247,
+   "materials": [
+    "Glass",
+    "Metal",
+    "Paper",
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/8187493508",
+   "lat": 54.985845,
+   "lon": -1.581975,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "node/8828058476",
+   "lat": 55.012342,
+   "lon": -1.635616,
+   "materials": [
+    "Textile"
+   ],
+   "centre": false,
+   "hours": null
+  },
+  {
+   "osm": "way/470932883",
+   "lat": 54.973655,
+   "lon": -1.588004,
+   "materials": [
+    "Metal"
+   ],
+   "centre": true,
+   "hours": null
+  },
+  {
+   "osm": "way/62226189",
+   "lat": 54.983409,
+   "lon": -1.734762,
+   "materials": [
+    "Cardboard",
+    "Glass",
+    "Metal",
+    "PET",
+    "Paper",
+    "Tetra Pak",
+    "Wood"
+   ],
+   "centre": true,
+   "hours": null
+  }
+ ]
+}

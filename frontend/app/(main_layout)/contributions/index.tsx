@@ -140,11 +140,11 @@ const Contributions = () => {
 
         <View style={{ marginTop: 48 }}>
 
-          <Entry date="Feb to May 2025" title="The coursework: I built the backend">
+          <Entry date="Feb to May 2025" title="The coursework: I led the backend team">
             <P>
               The app has three kinds of user: residents scanning things, councils looking after their recycling points, and
-              admins letting councils in. I wrote the API behind all of it in Python, with <Text style={strong}>FastAPI</Text> and{" "}
-              <Text style={strong}>Postgres</Text>.
+              admins letting councils in. I led the team that built the API behind all of it, in Python with{" "}
+              <Text style={strong}>FastAPI</Text> and <Text style={strong}>Postgres</Text>. Between us that was:
             </P>
             <Bullets items={[
               "logging in with JWT tokens in cookies, with separate roles for residents, councils and admins",

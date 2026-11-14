@@ -39,6 +39,7 @@ const MATERIAL_LABELS: Record<string, string> = {
 };
 
 export function materialLabel(name: string) {
+  if (!name) return "Unknown";
   const known = MATERIAL_LABELS[name.toUpperCase()];
   if (known) return known;
   return name.charAt(0).toUpperCase() + name.slice(1);

@@ -88,11 +88,12 @@ const NavBar = () => {
       width: "100%",
       paddingHorizontal: isWeb ? 0 : 40,
       flexGrow: 0,
-      backgroundColor: theme.primary,
+      // Forest green in both modes so the light icons stand out
+      backgroundColor: theme.type === "dark" ? theme.bg_secondary : theme.secondary,
       borderTopWidth: 2,
       borderRightWidth: isWeb ? 2 : 0,
       borderBottomWidth: isWeb ? 2 : 0,
-      borderColor: theme.secondary,
+      borderColor: theme.type === "dark" ? "#2c4a36" : theme.tertiary,
       borderTopRightRadius: isWeb ? 20 : 0,
       borderBottomRightRadius: isWeb ? 20 : 0,
       justifyContent: "center",
@@ -121,7 +122,7 @@ const NavBar = () => {
       top: isWeb ? "50%" : -buttonRadius / 2,
       transform: isWeb ? "translateY(-50%)" : "",
       borderWidth: 2,
-      borderColor: theme.secondary,
+      borderColor: theme.accent,
       elevation: 4,
     },
   });
@@ -132,7 +133,7 @@ const NavBar = () => {
           {/* color : inherit prevents links from being decorated in purple if already visited */}
           <Link href={{pathname: userData?.userRole === "COUNCIL" ? "/councilDashboard" : "/dashboard"}} style={{color: "inherit"}} asChild>
               <Pressable style={{flexDirection: "column", alignItems: "center"}}>
-                  <DashboardIcon width={26} height={26} fill={COLOUR.DARK.TEXT} />
+                  <DashboardIcon width={26} height={26} stroke={COLOUR.DARK.TEXT} />
                   {!isWeb && <Text style={{color: "white", fontSize: 12}}>Dashboard</Text>}
               </Pressable>
           </Link>
@@ -141,7 +142,7 @@ const NavBar = () => {
           href={{pathname: userData?.userRole === "COUNCIL" ? "/councilmap" : "/usermap"}} 
           style={{color: "inherit"}} asChild>
               <Pressable>
-                  <MapIcon width={26} height={26} fill={COLOUR.DARK.TEXT} />
+                  <MapIcon width={26} height={26} stroke={COLOUR.DARK.TEXT} />
                   {!isWeb && <Text style={{color: "white", fontSize: 12}}>Map</Text>}
               </Pressable>
           </Link>

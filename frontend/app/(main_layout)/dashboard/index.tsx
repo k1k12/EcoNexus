@@ -1,623 +1,184 @@
-import type React from "react"
-import { useEffect, useMemo, useState } from "react"
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Pressable } from "react-native"
-import { useThemeContext } from "@/context/ThemeContext"
-import { BarChart, PieChart } from "react-native-gifted-charts"
-import ArrowUpIcon from "@/assets/icons/arrowup"
-import ArrowDownIcon from "@/assets/icons/arrowdown"
-import LeafIcon from "@/assets/icons/leaf"
-import RecycleIcon from "@/assets/icons/recycle"
-import TreeIcon from "@/assets/icons/tree"
-import BulbIcon from "@/assets/icons/lightbulb"
-import TurtleIcon from "@/assets/icons/turtle"
-import { withAuth } from "@/utils/withAuth"
+import React, { useEffect, useMemo, useState } from "react"
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native"
+import { router } from "expo-router"
 
+import { withAuth } from "@/utils/withAuth"
 import { fetchProtectedEndpoint } from "@/utils/apiCalls"
 import { BACKEND_URL } from "@/config"
 import { usePage } from "@/context/PageContext"
+import { useAuth } from "@/context/AuthContext"
 import LoadingScreen from "@/components/core/LoadingScreen"
-import { generateColor } from "@/utils/superMegaHackyColorGenerator"
-import MaterialPercentagesPieChart from "@/components/charts/MaterialPercentagesPieChart"
-
+import { FONT } from "@/constants/Fonts"
+import { Panel, PanelTitle, StatCard, RankedBars, WeekBars, materialLabel, useDashboardColours, styles as parts } from "@/components/dashboard/DashboardParts"
 
 /**
- * Dashboard Component
+ * Dashboard Component (residents)
  *
- * This component displays a comprehensive recycling dashboard for users, providing insights into their recycling progress and environmental impact.
- * It includes several key sections:
- *   1. Weekly Recycling Progress Chart: A bar chart visualizing the number of items recycled each week.
- *   2. Recycling Statistics Pie Chart: A pie chart illustrating the breakdown of recycled items by material type.
- *   3. Environmental Impact Metrics: Displays key metrics such as trees saved, turtles saved, and CO2 reduced.
- *
- * Key Features:
- *   - Responsive layout that adapts to different screen sizes, providing an optimal viewing experience on both desktop and mobile devices.
- *   - Interactive charts that allow users to explore the data in more detail.
- *   - Theme context integration for consistent styling and appearance.
- *   - Mock data for demonstration purposes, with the potential to integrate with real-time data sources.
- *   - User authentication via withAuth to ensure only logged-in users can access the dashboard.
- *
- * Data Sources:
- *   - weeklyData: Mock data representing the number of items recycled each week.
- *   - materialData: Mock data representing the breakdown of recycled items by material type.
- *
- * Functions:
- *   - The component utilizes various helper functions and calculations to derive meaningful insights from the data, such as calculating percentage changes, averages, and environmental impact metrics.
- *   - It also implements event handlers for user interactions, such as clicking on pie chart segments to view percentages.
+ * Shows how a user's recycling is going: a one-line summary, four headline
+ * numbers, the last seven days, which materials they recycle most, and a rough
+ * idea of what that saves. Everything comes from GET /dashboard.
  */
 
+type DashboardResponse = {
+  progress: {
+    items_per_day_over_last_week: Record<string, number>
+    improvement_over_last_week: number
+    average_items_per_week_over_last_month: number
+  }
+  environmental_impact: {
+    turtles_saved: number
+    trees_saved: number
+    co2_saved: number
+  }
+  statistics: {
+    materials_recycled: Record<string, number>
+  }
+}
+
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+// Up to 2 decimal places, without floating point noise like 0.9500000000000001
+const round = (n: number) => Math.round(n * 100) / 100
+
 const Dashboard: React.FC = () => {
-  const { theme } = useThemeContext()
+  const c = useDashboardColours()
+  const { theme } = c
   const { width } = useWindowDimensions()
-  const [activeSegment, setActiveSegment] = useState<string | null>(null);
-  const { showToastNotification } = usePage();
-
-  const [fetchedDashboardData, setDashboardData] = useState<any | null>(null);
-  const [processedDashboardData, setProcessedDashboardData] = useState<any | null>(null);
-
-  // Calculate chart dimensions based on container width
-  const chartWidth = width > 1200 ? 900 : width > 768 ? width * 0.85 : width * 0.9
-  const cardWidth = width > 768 ? "48%" : "100%"
-
-  // Create a grid-like layout similar to the web version
-  const gridLayout = width > 768
+  const wide = width >= 900
+  const { userData } = useAuth()
+  const { showToastNotification } = usePage()
+  const [data, setData] = useState<DashboardResponse | null>(null)
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-        const response = await fetchProtectedEndpoint(`${BACKEND_URL}/dashboard`,
-                                                      {method: "GET"})
-        if (!response.ok) {
-           showToastNotification("Cannot retrieve dashboard data, please try again.");
-           return;
-        }
-        const data = await response.json();
-        setDashboardData(data);
-    };
-    fetchDashboardData();
-  }, []);
-
-  useEffect(() => {
-      if (!fetchedDashboardData) return;
-
-      const itemsPerDayOverLastWeek: Record<string, number> = fetchedDashboardData.progress.items_per_day_over_last_week;
-
-      // Check if there's no data (empty object)
-      const enoughData = Object.keys(itemsPerDayOverLastWeek).length > 0;
-      if (!enoughData) {
-      // If there's no data, set default values or handle accordingly
-      setProcessedDashboardData({
-          itemsPerDayOverLastWeek: {},
-          averageDaily: 0,
-          totalItemsOverLastWeek: 0,
-          enoughData: false,
-          chartData: [],
-          improvementOverLastWeek: 0,
-          avgItemsPerWeekOverLastMonth: 0,
-          turtlesSaved: 0,
-          treesSaved: 0,
-          co2Saved: 0
-      });
-      return;
+    const load = async () => {
+      const response = await fetchProtectedEndpoint(`${BACKEND_URL}/dashboard`, { method: "GET" })
+      if (!response.ok) {
+        showToastNotification("Cannot retrieve dashboard data, please try again.")
+        return
       }
-      // Calculate total and average
-      const totalItemsOverLastWeek: number = Object.values(itemsPerDayOverLastWeek)
-      .reduce((sum: number, val: number): number => sum + val, 0);
-      const averageDaily: number = totalItemsOverLastWeek / Object.keys(itemsPerDayOverLastWeek).length;
-      // Set the chart data for each day of the week, filling missing days with 0
-      const daysOfWeek = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-      const barchartData = daysOfWeek.map((day) => {
-          const value = itemsPerDayOverLastWeek[day] || 0;  // Default to 0 if day not found
-              return {
-                  value,
-                  label: day.charAt(0).toUpperCase() + day.slice(1),  // Capitalize first letter of day
-                  frontColor: theme.primary,
-                  topLabelComponent: () => (
-                      <View style={styles.barLabelContainer}>
-                      <Text style={[styles.barLabel, { color: theme.secondary }]}>{value}</Text>
-                      </View>
-                  ),
-                  disablePress: true,
-              };
-      });
-      const materialsRecycled : Record<string, number> = fetchedDashboardData.statistics.materials_recycled;
-      const totalRecycled = Object.values(materialsRecycled).reduce((sum: number, amount: number) => sum + amount, 0);
-      let pieData;
-      let materialPercentages;
-      // If no data, piedata is null
-      if (totalRecycled === 0) {
-          pieData = null;
-      }
-      else {
-          materialPercentages = Object.entries(materialsRecycled).map(([material, amount]) => {
-              const percentage = ((amount / totalRecycled) * 100).toFixed(2); // Calculate percentage
-              const color = generateColor(material); // Generate color for each material
-              return {
-                  name: material,
-                  value: amount,
-                  percentage: percentage,
-                  color: color, // Dynamic color based on material
-              };
-          });
-      }
-      // Set the state with the calculated data
-      setProcessedDashboardData({
-          itemsPerDayOverLastWeek,
-          averageDaily,
-          totalItemsOverLastWeek,
-          enoughData: true,
-          barchartData,
-          materialPercentages,
-          improvementOverLastWeek: fetchedDashboardData.progress.improvement_over_last_week,
-          avgItemsPerWeekOverLastMonth: fetchedDashboardData.progress.average_items_per_week_over_last_month,
-          // Rounded to 2 decimal places so floating point noise (0.9500000000000001) doesn't show
-          turtlesSaved: Math.round(fetchedDashboardData.environmental_impact.turtles_saved * 100) / 100,
-          treesSaved: Math.round(fetchedDashboardData.environmental_impact.trees_saved * 100) / 100,
-          co2Saved: Math.round(fetchedDashboardData.environmental_impact.co2_saved * 100) / 100,
-      });
-  }, [fetchedDashboardData, theme.primary, theme.secondary, activeSegment]);
+      setData(await response.json())
+    }
+    load()
+  }, [])
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      width: "100%",
-      backgroundColor: theme.bg_primary || "#f5f7f5",
-    },
-    contentContainer: {
-      flexGrow: 1,
-      padding: 16,
-    },
-    header: {
-      marginBottom: 16,
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.secondary,
-      marginBottom: 4,
-    },
-    headerSubtitle: {
-      fontSize: 14,
-      color: theme.primary,
-      marginBottom: 12,
-    },
-    gridContainer: {
-      flexDirection: gridLayout ? "row" : "column",
-      flexWrap: "wrap",
-      justifyContent: "space-between", width: "100%",
-    },
-    card: {
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      marginBottom: 16,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    fullWidthCard: {
-      width: "100%",
-    },
-    halfWidthCard: {
-      width: cardWidth,
-    },
-    cardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    cardIcon: {
-      marginRight: 8,
-      backgroundColor: `${theme.primary}20`,
-      padding: 6,
-      borderRadius: 8,
-    },
-    cardTitle: {
-      fontSize: 16,
-      color: theme.secondary,
-      fontWeight: "600",
-    },
-    cardDescription: {
-      fontSize: 12,
-      color: theme.primary,
-      marginBottom: 12,
-    },
-    chartsRow: {
-      flexDirection: gridLayout ? "row" : "column",
-      justifyContent: "space-between",
-      width: "100%",
-      marginBottom: 16,
-    },
-    chartCard: {
-      width: gridLayout ? "49%" : "100%",
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-      marginBottom: gridLayout ? 0 : 16,
-      overflow: "hidden"
-    },
-    environmentalCard: {
-      width: gridLayout ? "70%" : "100%",
-      alignSelf: "center",
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    impactRow: {
-      flexDirection: gridLayout ? "row" : "column",
-      justifyContent: "space-between",
-      flexWrap: "wrap",
-    },
-    barChartCard: {
-      width: gridLayout ? "58%" : "100%",
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-      marginBottom: gridLayout ? 0 : 16,
-    },
-    pieChartCard: {
-      width: gridLayout ? "38%" : "100%",
-      backgroundColor: theme.bg_secondary || "#ffffff",
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    chartContainer: {
-      width: "100%",
-      alignItems: "center",
-      marginVertical: 8,
-      height: 180,
-    },
-    barLabelContainer: {
-      backgroundColor: `${theme.primary}20`,
-      paddingHorizontal: 4,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    barLabel: {
-      fontSize: 10,
-      fontWeight: "600",
-    },
-    percentChangeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: 8,
-      marginBottom: 12,
-    },
-    percentChange: {
-      flexDirection: "row",
-      alignItems: "center",
-      //backgroundColor: percentChange >= 0 ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)", // Keep these colors for semantic meaning
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    },
-    percentText: {
-      fontSize: 12,
-      fontWeight: "600",
-      marginLeft: 4,
-      //color: percentChange >= 0 ? "#22c55e" : "#ef4444",
-    },
-    tipContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: `${theme.primary}20`,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-      maxWidth: "60%",
-    },
-    tipText: {
-      fontSize: 11,
-      color: theme.secondary,
-      marginLeft: 4,
-    },
-    statsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: 12,
-    },
-    statBox: {
-      flex: 1,
-      backgroundColor: `${theme.primary}20`,
-      borderRadius: 8,
-      padding: 12,
-      marginHorizontal: 4,
-    },
-    statLabel: {
-      fontSize: 12,
-      color: theme.secondary,
-    },
-    statValue: {
-      fontSize: 16,
-      color: theme.secondary,
-      fontWeight: "600",
-      marginTop: 4,
-    },
-    impactContainer: {
-      marginTop: 8,
-    },
-    impactItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-      backgroundColor: `${theme.primary}10`,
-      padding: 10,
-      borderRadius: 8,
-      width: gridLayout ? "31%" : "100%",
-    },
-    impactContent: {
-      flex: 1,
-    },
-    impactIcon: {
-      marginRight: 10,
-      backgroundColor: `${theme.primary}20`,
-      padding: 6,
-      borderRadius: 8,
-    },
-    impactLabel: {
-      fontSize: 12,
-      color: theme.primary,
-    },
-    impactValue: {
-      fontSize: 16,
-      color: theme.secondary,
-      fontWeight: "600",
-    },
-    impactSubtext: {
-      fontSize: 11,
-      color: theme.primary,
-      marginTop: 2,
-    },
-    pieChartSection: {
-      flexDirection: "column",
-    },
-    pieChartContainer: {
-      width: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-      height: 220,
-    },
-    legendContainer: {
-      width: "100%",
-      marginTop: 10,
-    },
-    legendRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-    },
-    legendItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 6,
-      paddingVertical: 4,
-      paddingHorizontal: 6,
-      borderRadius: 6,
-      width: "48%",
-    },
-    legendItemActive: {
-      backgroundColor: "rgba(109, 152, 122, 0.15)",
-    },
-    legendLeftContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    legendColor: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      marginRight: 6,
-    },
-    legendText: {
-      fontSize: 12,
-      color: theme.secondary,
-    },
-    legendTextActive: {
-      fontWeight: "700",
-    },
-    legendPercentage: {
-      fontSize: 12,
-      color: theme.secondary,
-      fontWeight: "600",
-    },
-    totalContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    totalValue: {
-      fontSize: 24,
-      fontWeight: "700",
-      color: theme.secondary,
-    },
-    totalLabel: {
-      fontSize: 12,
-      color: theme.primary,
-    },
-  })
+  const view = useMemo(() => {
+    if (!data) return null
+    const perDay = data.progress.items_per_day_over_last_week
 
-  if (!fetchedDashboardData || !processedDashboardData) return <LoadingScreen />;
-  if (!processedDashboardData.enoughData){
-      return (
-        <View style={{justifyContent: "center"}}>
-            <Text style={{color: theme.text, textAlign: "center", textAlignVertical: "center", fontSize: 24}}>Not enough data yet, recycle more!</Text>
-        </View>
-      );
+    // The last seven days, ending today
+    const today = new Date().getDay()
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = (today - 6 + i + 7) % 7
+      return { label: DAY_NAMES[d].slice(0, 3), fullName: DAY_NAMES[d], value: perDay[DAY_KEYS[d]] || 0 }
+    })
+    const thisWeek = days.reduce((sum, d) => sum + d.value, 0)
+    const bestDay = days.reduce((best, d) => (d.value > best.value ? d : best), days[0])
+
+    const materials = data.statistics.materials_recycled
+    const topMaterial = Object.entries(materials).sort((a, b) => b[1] - a[1])[0]
+    const allTime = Object.values(materials).reduce((sum, n) => sum + n, 0)
+
+    return {
+      days,
+      thisWeek,
+      bestDay,
+      change: Math.round(data.progress.improvement_over_last_week),
+      average: round(data.progress.average_items_per_week_over_last_month),
+      materials,
+      topMaterial,
+      allTime,
+      impact: data.environmental_impact,
+    }
+  }, [data])
+
+  if (!data || !view) return <LoadingScreen />
+
+  const name = userData?.firstName ?? "there"
+  const items = (n: number) => `${n} item${n === 1 ? "" : "s"}`
+
+  // A sentence that still makes sense when there's nothing to compare with yet
+  let summary: React.ReactNode
+  if (view.thisWeek === 0) {
+    summary = <>You haven't recycled anything in the last 7 days. Scan something to get started.</>
+  } else if (view.change > 0) {
+    summary = <>You recycled <Text style={{ fontFamily: FONT.bold, color: theme.text }}>{items(view.thisWeek)}</Text> in the last 7 days, <Text style={{ fontFamily: FONT.bold, color: theme.accent }}>{view.change}% more</Text> than the week before.</>
+  } else if (view.change < 0) {
+    summary = <>You recycled <Text style={{ fontFamily: FONT.bold, color: theme.text }}>{items(view.thisWeek)}</Text> in the last 7 days, {Math.abs(view.change)}% fewer than the week before.</>
+  } else {
+    summary = <>You recycled <Text style={{ fontFamily: FONT.bold, color: theme.text }}>{items(view.thisWeek)}</Text> in the last 7 days.</>
   }
 
+  const changeText = view.change > 0 ? `+${view.change}%` : `${view.change}%`
+
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Your Recycling Dashboard</Text>
-          <Text style={styles.headerSubtitle}>Track your recycling progress and environmental impact</Text>
+    <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={{ width: "100%", maxWidth: 1200, alignSelf: "center", paddingHorizontal: wide ? 24 : 8, paddingTop: 24 }}>
+
+        <View style={{ flexDirection: wide ? "row" : "column", alignItems: wide ? "flex-end" : "flex-start", gap: 12 }}>
+          <View style={{ flex: wide ? 1 : undefined }}>
+            <Text style={{ fontFamily: FONT.bold, fontSize: wide ? 48 : 36, letterSpacing: -1.5, color: theme.text }} accessibilityRole="header">Hi {name},</Text>
+            <Text style={{ fontFamily: FONT.regular, fontSize: wide ? 22 : 18, lineHeight: wide ? 30 : 26, color: theme.text_muted, marginTop: 10, maxWidth: 680 }}>{summary}</Text>
+          </View>
+          {view.change > 0 && (
+            <Text style={{ fontFamily: FONT.hand, fontSize: 30, color: theme.accent, transform: [{ rotate: "-4deg" }] }}>keep it going!</Text>
+          )}
         </View>
 
-        <View style={styles.chartsRow}>
-          {/* Bar Chart */}
-          <View style={styles.chartCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}>
-                <RecycleIcon width={18} height={18} stroke={theme.secondary} />
-              </View>
-              <Text style={styles.cardTitle}>Daily Recycling Progress</Text>
+        <View style={[parts.row, { marginTop: 28 }]}>
+          <StatCard label="Last 7 days" value={`${view.thisWeek}`} unit={view.thisWeek === 1 ? "item" : "items"} />
+          <StatCard label="Compared with the week before" value={view.change === 0 ? "No change" : changeText} accentValue={view.change > 0} />
+          <StatCard label="Weekly average" value={`${view.average}`} unit="over 4 weeks" />
+          <StatCard label="You recycle most" value={view.topMaterial ? materialLabel(view.topMaterial[0]) : "Nothing yet"} />
+        </View>
+
+        <View style={[parts.row, { marginTop: 16 }]}>
+          <Panel style={{ flexGrow: 1, flexBasis: 440, minWidth: 0 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <PanelTitle title="The last 7 days" subtitle="Items recycled each day" />
+              {view.bestDay.value > 0 && (
+                <Text style={{ fontFamily: FONT.hand, fontSize: 24, color: theme.accent, transform: [{ rotate: "-6deg" }] }}>best day: {view.bestDay.fullName}</Text>
+              )}
             </View>
-            <Text style={styles.cardDescription}>Items recycled per day over last week</Text>
-            <View style={styles.chartContainer}>
-              <BarChart
-                data={processedDashboardData.barchartData}
-                width={gridLayout ? chartWidth * 0.45 - 40 : chartWidth - 60}
-                height={160}
-                barWidth={gridLayout ? 22 : 30}
-                spacing={gridLayout ? 12 : 20}
-                barBorderRadius={4}
-                yAxisTextStyle={{ color: theme.secondary, fontSize: 10 }}
-                xAxisLabelTextStyle={{ color: theme.secondary, fontSize: 10 }}
-                yAxisColor={`${theme.secondary}40`}
-                xAxisColor={`${theme.secondary}40`}
-                backgroundColor={`${theme.primary}10`}
-                rulesColor={`${theme.secondary}20`}
-                noOfSections={5}
-                yAxisThickness={1}
-                xAxisThickness={1}
-                yAxisLabelTexts={["0", "5", "10", "15", "20", "25"]}
-              />
-            </View>
-            
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Average Per Week Over Last Month</Text>
-                <Text style={styles.statValue}>{processedDashboardData.avgItemsPerWeekOverLastMonth.toFixed(1)} items</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Average daily</Text>
-                <Text style={styles.statValue}>{processedDashboardData.averageDaily} items</Text>
-              </View>
-            </View>
+            <WeekBars days={view.days} />
+          </Panel>
+
+          <Panel style={{ flexGrow: 1, flexBasis: 440, minWidth: 0 }}>
+            <PanelTitle title="What you recycle" subtitle={`All ${view.allTime.toLocaleString()} of your items, by material`} />
+            {view.allTime > 0 ? (
+              <RankedBars data={view.materials} />
+            ) : (
+              <Text style={{ fontFamily: FONT.regular, fontSize: 16, color: theme.text_muted }}>Your materials show up here once you've recycled something.</Text>
+            )}
+          </Panel>
+        </View>
+
+        <View style={{ marginTop: 16, padding: 24, borderRadius: 16, backgroundColor: c.isDark ? "#f2f5ef" : theme.bg_secondary }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", gap: 12 }}>
+            <Text style={{ fontFamily: FONT.bold, fontSize: 22, color: "#142019" }} accessibilityRole="header">What this week adds up to</Text>
+            <Text style={{ fontFamily: FONT.hand, fontSize: 22, color: "#2f6b45" }}>(rough estimates)</Text>
           </View>
-          {/* Pie Chart */}
-          <View style={styles.chartCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}>
-                <RecycleIcon width={18} height={18} stroke={theme.secondary} />
+          <View style={[parts.row, { marginTop: 16 }]}>
+            {[
+              { value: `${round(view.impact.co2_saved)} kg`, text: "of CO₂ kept out of the air" },
+              { value: `${round(view.impact.trees_saved)}`, text: "trees' worth of paper and card saved" },
+              { value: `${round(view.impact.turtles_saved)}`, text: "turtles' worth of plastic kept out of the sea" },
+            ].map((item) => (
+              <View key={item.text} style={{ flexGrow: 1, flexBasis: 220, minWidth: 0, paddingTop: 14, borderTopWidth: 2, borderColor: "#142019" }}>
+                <Text style={{ fontFamily: FONT.bold, fontSize: 36, letterSpacing: -1, color: "#142019" }}>{item.value}</Text>
+                <Text style={{ fontFamily: FONT.regular, fontSize: 16, lineHeight: 23, color: "#3a4a40", marginTop: 4 }}>{item.text}</Text>
               </View>
-              <Text style={styles.cardTitle}>Recycling Statistics</Text>
-            </View>
-            <Text style={styles.cardDescription}>Breakdown by material type - select the data to see percentages</Text>
-
-            <View style={styles.pieChartSection}>
-              <View style={styles.pieChartContainer}>
-                <MaterialPercentagesPieChart
-                    data={processedDashboardData.materialPercentages}
-                />
-              </View>
-
-              <View style={styles.legendContainer}>
-                <View style={styles.legendRow}>
-                  {processedDashboardData.materialPercentages.map((material: any) => {
-                    const isActive = activeSegment === material.name
-                    return (
-                      <Pressable
-                        key={material.id}
-                        style={[styles.legendItem, isActive && styles.legendItemActive]}
-                        onPress={() => setActiveSegment(isActive ? null : material.name)}
-                      >
-                        <View style={styles.legendLeftContent}>
-                          <View
-                            style={[
-                              styles.legendColor,
-                              {
-                                backgroundColor: material.color,
-                                width: isActive ? 14 : 10,
-                                height: isActive ? 14 : 10,
-                                borderWidth: isActive ? 2 : 0,
-                                borderColor: "#ffffff",
-                              },
-                            ]}
-                          />
-                          <Text style={[styles.legendText, isActive && styles.legendTextActive]}>{material.name}</Text>
-                        </View>
-                        <Text style={styles.legendPercentage}>{material.amount}</Text>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
-        {/* Environmental Impact */}
-        <View style={styles.environmentalCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIcon}>
-              <LeafIcon width={18} height={18} stroke={theme.secondary} />
-            </View>
-            <Text style={styles.cardTitle}>Environmental Impact</Text>
-          </View>
-          <Text style={styles.cardDescription}>Your contribution to the planet</Text>
 
-          <View style={styles.impactRow}>
-            <View style={styles.impactItem}>
-              <View style={styles.impactIcon}>
-                <TreeIcon width={18} height={18} stroke={theme.secondary} />
-              </View>
-              <View style={styles.impactContent}>
-                <Text style={styles.impactLabel}>Trees Saved</Text>
-                <Text style={styles.impactValue}>{processedDashboardData.treesSaved}</Text>
-                <Text style={styles.impactSubtext}>That's enough oxygen for {processedDashboardData.treesSaved * 2} people!</Text>
-              </View>
-            </View>
-
-            <View style={styles.impactItem}>
-              <View style={styles.impactIcon}>
-                <TurtleIcon width={18} height={18} stroke={theme.secondary} />
-              </View>
-              <View style={styles.impactContent}>
-                <Text style={styles.impactLabel}>Turtles Saved</Text>
-                <Text style={styles.impactValue}>{processedDashboardData.turtlesSaved}</Text>
-                <Text style={styles.impactSubtext}>By keeping plastic out of our oceans</Text>
-              </View>
-            </View>
-
-            <View style={styles.impactItem}>
-              <View style={styles.impactIcon}>
-                <RecycleIcon width={18} height={18} stroke={theme.secondary} />
-              </View>
-              <View style={styles.impactContent}>
-                <Text style={styles.impactLabel}>CO₂ Reduced</Text>
-                <Text style={styles.impactValue}>{processedDashboardData.co2Saved} kg</Text>
-                <Text style={styles.impactSubtext}>
-                  Equivalent to {Math.round(processedDashboardData.co2Saved / 10)} days without driving
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+        {view.thisWeek === 0 && (
+          <Pressable onPress={() => router.navigate("/scan")} accessibilityRole="button" style={{ alignSelf: "flex-start", marginTop: 20, minHeight: 48, paddingHorizontal: 22, borderRadius: 12, backgroundColor: theme.accent, justifyContent: "center" }}>
+            <Text style={{ fontFamily: FONT.bold, fontSize: 16, color: theme.on_accent }}>Scan something</Text>
+          </Pressable>
+        )}
+      </View>
+    </ScrollView>
   )
 }
 

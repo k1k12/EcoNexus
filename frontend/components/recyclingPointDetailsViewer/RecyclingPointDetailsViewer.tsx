@@ -60,9 +60,10 @@ const RecyclingPointDetailsViewer = ({point, onClose} : {point: RecyclingPoint, 
                 <View>
                     <Text style={{ fontFamily: FONT.semiBold, fontSize: 14, color: theme.text_muted, marginBottom: 8 }}>Takes</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                        {point.type.map((material) => (
-                            <Text key={material.name} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, overflow: "hidden", backgroundColor: theme.accent, color: theme.on_accent, fontFamily: FONT.bold, fontSize: 14 }}>
-                                {materialLabel(material.name)}
+                        {/* The guest map only has material names, the council map has {id, name} objects */}
+                        {point.type.map((material) => typeof material === "string" ? material : material.name).map((name) => (
+                            <Text key={name} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, overflow: "hidden", backgroundColor: theme.accent, color: theme.on_accent, fontFamily: FONT.bold, fontSize: 14 }}>
+                                {materialLabel(name)}
                             </Text>
                         ))}
                     </View>

@@ -27,12 +27,6 @@ async def get_pending_councils(
 
     pending_councils = result.scalars().all()
 
-    if not pending_councils:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No pending councils found",
-        )
-    
     # Prepare response
     councils_data = []
     for admin in pending_councils:

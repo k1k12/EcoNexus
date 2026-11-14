@@ -131,7 +131,7 @@ const NavBar = () => {
       <View style={[styles.container]}>
         <View style={styles.iconContainer}>
           {/* color : inherit prevents links from being decorated in purple if already visited */}
-          <Link href={{pathname: userData?.userRole === "COUNCIL" ? "/councilDashboard" : "/dashboard"}} style={{color: "inherit"}} asChild>
+          <Link href={{pathname: userData?.userRole === "COUNCIL" ? "/councilDashboard" : userData?.userRole === "ADMIN" ? "/admin" : "/dashboard"}} style={{color: "inherit"}} asChild>
               <Pressable style={{flexDirection: "column", alignItems: "center"}}>
                   <DashboardIcon width={26} height={26} stroke={COLOUR.DARK.TEXT} />
                   {!isWeb && <Text style={{color: "white", fontSize: 12}}>Dashboard</Text>}

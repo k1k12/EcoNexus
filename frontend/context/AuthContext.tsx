@@ -105,8 +105,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
                     password: registerData.password,
                     gss_code: registerData.areaCode || null,
                     role: registerData.userType.toLowerCase(),
-                    mfa_secret: registerData.mfaSecret,
-                    mfa_code: registerData.mfaCode
                 })
             });
             if (!response.ok) {

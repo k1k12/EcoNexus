@@ -1,5 +1,5 @@
 import React from "react";
-import { Slot } from "expo-router";
+import { Slot, usePathname } from "expo-router";
 import { useThemeContext } from "@/context/ThemeContext";
 import { StyleSheet, View, Platform, ImageBackground } from "react-native";
 import Header from "@/components/core/Header";
@@ -37,6 +37,8 @@ import TileImage from "@/assets/images/tilewhite.png"
 function Content() {
   const { theme } = useThemeContext();
   const isWeb = Platform.OS === "web";
+  // The login page has its own side panel, so it gets the full width
+  const fullWidth = usePathname().startsWith("/login");
 
   const styles = StyleSheet.create({
     container: {
@@ -88,12 +90,13 @@ function Content() {
           <Header />
         </View>
         <View style={styles.webRow}>
-          <ImageBackground 
-            source={TileImage}
-            style={styles.greenBox}
-            imageStyle={{ width: "100%" , height: "100%" }}
-
-          />
+          {!fullWidth && (
+            <ImageBackground
+              source={TileImage}
+              style={styles.greenBox}
+              imageStyle={{ width: "100%" , height: "100%" }}
+            />
+          )}
           <View style={styles.content}>
             <Slot />
           </View>

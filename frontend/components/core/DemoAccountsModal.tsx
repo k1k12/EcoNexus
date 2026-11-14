@@ -169,7 +169,9 @@ const DemoAccountsModal = ({ visible, onClose }: DemoAccountsModalProps) => {
             ))}
 
             <Text style={styles.note}>
-              These accounts are shared and can't be changed. The demo data resets regularly.
+              These accounts are shared and can't be changed, and the demo data resets regularly.
+              Recycling point locations are real, from OpenStreetMap (© OpenStreetMap contributors).
+              The opening times, residents and recycling history are made up for the demo, not council data.
               If you sign in with an authenticator code on the login page, any 6 digits work.
             </Text>
 

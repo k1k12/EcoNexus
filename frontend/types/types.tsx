@@ -104,9 +104,6 @@ export type RegisterFields = {
     emailRegistering: string;
     areaCode: string;
     userType: UserRole;
-    mfaEnabled: boolean;
-    mfaSecret: string;
-    mfaCode: string;
 }
 
 export type ScanningSteps = "SCANNING" | "AFTER_SCANNED" | "MAP";

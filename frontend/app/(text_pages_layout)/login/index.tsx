@@ -1,65 +1,56 @@
-"use client"
-
 import { useEffect, useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert, ScrollView, Platform } from "react-native"
-import { useThemeContext } from "@/context/ThemeContext"
-import LogoDark from "@/assets/images/logo-dark.png"
-import LogoLight from "@/assets/images/logo-light.png"
-import CustomButton from "@/components/core/CustomButton"
-import AuthenticatorQR from "@/components/core/AuthenticatorQR"
-import { usePage } from "@/context/PageContext"
-import { checkValidEmail, checkValidName, checkValidPassword } from "@/utils/fieldValidators"
-import { useAuth } from "@/context/AuthContext"
-import SelectAreaScreen from "@/components/selectAreaScreen/SelectAreaScreen"
-import { LoginPages, type RegisterFields } from "@/types/types"
-import LeafletContextProvider from "@/context/LeafletContext"
+import { View, Text, TextInput, Pressable, ScrollView, Platform, useWindowDimensions, TextInputProps } from "react-native"
+import Svg, { Path } from "react-native-svg"
 import { router } from "expo-router"
 
-// npm install otplib react-native-qrcode-svg base32-encode will be needed for the QR for MFA
+import { useThemeContext } from "@/context/ThemeContext"
+import { usePage } from "@/context/PageContext"
+import { useAuth } from "@/context/AuthContext"
+import { checkValidEmail, checkValidName, checkValidPassword } from "@/utils/fieldValidators"
+import SelectAreaScreen from "@/components/selectAreaScreen/SelectAreaScreen"
+import LeafletContextProvider from "@/context/LeafletContext"
+import { LoginPages, type RegisterFields, type UserRole } from "@/types/types"
+import { FONT } from "@/constants/Fonts"
+import { DEMO_ACCOUNTS, DEMO_ACCOUNTS_ENABLED } from "@/constants/DemoAccounts"
+import { useDemoLogin } from "@/hooks/useDemoLogin"
+import { useDashboardColours } from "@/components/dashboard/DashboardParts"
 
 /**
- * MissionLoginScreen Component
+ * Login / sign up page
  *
- * This component serves as the main login and registration page for the application.
- * It manages different states for login, account creation, council area selection, and pending approval status.
+ * One page with "Log in" and "Sign up" tabs. On wide screens a panel on the left
+ * says what the app is for; on phones it's just the form.
  *
- * Key Features:
- *   - Implements a multi-page flow for login and registration, including:
- *     - Homepage: Displays the application logo and prompts users to log in or create an account.
- *     - Create Account Page: Allows users to create a new account with options for normal users and council users.
- *     - Login Page: Provides a login form for existing users to enter their credentials.
- *     - Select Area Page: Allows council users to select their council area on a map.
- *     - Pending Approval Page: Displays a message indicating that the council user's account is pending approval.
- *   - Utilizes the AuthContext to handle user authentication and registration.
- *   - Integrates with the RegisterContext to manage the registration state and logic.
- *   - Uses LeafletContextProvider to provide Leaflet context to the SelectAreaScreen component on web platforms.
- *   - Implements form validation for login and registration fields.
- *   - Supports Multi-Factor Authentication (MFA) using the AuthenticatorQR component.
- *   - Redirects logged-in users to their respective dashboards based on their user role.
+ *   - Log in: email and password. The demo accounts are underneath for anyone just looking.
+ *   - Sign up: resident or council, name, email, password (with the rules ticked off as you type).
+ *     Residents can log in straight away. Councils pick their area on the next screen
+ *     and then wait for an admin to approve them.
  *
- * Functionality:
- *   - Manages the active page using a state variable.
- *   - Handles user input and form submission for login and registration.
- *   - Validates user input and displays error messages using the usePage context.
- *   - Calls the login and register functions from the AuthContext to authenticate users and create new accounts.
- *   - Redirects users to their respective dashboards based on their user role after successful login.
- *   - Provides a platform-specific implementation for the SelectAreaScreen, wrapping it with LeafletContextProvider on web platforms.
- *
- * Components:
- *   - CustomButton: A reusable button component.
- *   - AuthenticatorQR: A component for generating and displaying a QR code for MFA setup.
- *   - SelectAreaScreen: A component for selecting a council area on a map.
- *
- * Hooks:
- *   - useThemeContext: Provides access to the application's theme for styling.
- *   - usePage: Provides access to the application's page context for displaying notifications.
- *   - useAuth: Provides access to the application's authentication context for user authentication and registration.
+ * Logged in users get sent to their role's page.
  */
+
+type Tab = "login" | "signup"
+
+const PASSWORD_RULES = [
+  { label: "8+ characters", test: (p: string) => p.length >= 8 },
+  { label: "a number", test: (p: string) => /\d/.test(p) },
+  { label: "upper and lower case", test: (p: string) => /[a-z]/.test(p) && /[A-Z]/.test(p) },
+]
 
 const MissionLoginScreen = () => {
   const { theme } = useThemeContext()
-  const [activePage, setActivePage] = useState(LoginPages.HomePage)
-  const [loginState, setLoginState] = useState<RegisterFields>({
+  const c = useDashboardColours()
+  const { width } = useWindowDimensions()
+  const wide = width >= 900
+  const { showToastNotification } = usePage()
+  const { login, register, isUserLoggedIn, userData } = useAuth()
+  const { logInAs, loadingRole, error: demoError } = useDemoLogin()
+
+  const [activePage, setActivePage] = useState(LoginPages.LoginPage)
+  const [tab, setTab] = useState<Tab>("login")
+  const [focused, setFocused] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [form, setForm] = useState<RegisterFields>({
     firstname: "",
     surname: "",
     emailLogin: "",
@@ -68,511 +59,312 @@ const MissionLoginScreen = () => {
     confirmPassword: "",
     emailRegistering: "",
     userType: "USER",
-    mfaEnabled: true,
-    mfaSecret: "",
-    mfaCode: "",
   })
-
-  const { showToastNotification } = usePage()
-  const { login, register, isUserLoggedIn, userData} = useAuth()
 
   useEffect(() => {
-      if (!isUserLoggedIn || !userData) return;
-      if (isUserLoggedIn && userData.userRole === "USER") {
-          router.navigate("/dashboard");
-      }
-      else if (isUserLoggedIn && userData.userRole === "COUNCIL") {
-          router.navigate("/councilDashboard");
-      }
-      else if (isUserLoggedIn && userData.userRole === "ADMIN") {
-          router.navigate("/admin");
-      }
-  }, [isUserLoggedIn, userData]);
+    if (!isUserLoggedIn || !userData) return
+    if (userData.userRole === "USER") router.navigate("/dashboard")
+    else if (userData.userRole === "COUNCIL") router.navigate("/councilDashboard")
+    else if (userData.userRole === "ADMIN") router.navigate("/admin")
+  }, [isUserLoggedIn, userData])
 
-  const isDarkMode = theme.type === "dark"
-  const logoSource = isDarkMode ? LogoLight : LogoDark
+  const switchTab = (next: Tab) => {
+    setTab(next)
+    setForm((prev) => ({ ...prev, password: "" }))
+  }
 
-  // Handle login with MFA
   const handleLogin = async () => {
-    // Validate inputs
-    if (!loginState.emailLogin || !loginState.password) {
-      showToastNotification("Missing Information. Please enter both username and password.");
-      return;
+    if (!form.emailLogin || !form.password) {
+      showToastNotification("Enter your email and password.")
+      return
     }
-
-    if (!checkValidEmail(loginState.emailLogin)) {
-      showToastNotification("Email is invalid.");
-      return;
+    if (!checkValidEmail(form.emailLogin)) {
+      showToastNotification("That email doesn't look right.")
+      return
     }
-
-    // TODO : implement 2FA
-    // Validate MFA code
-    if (!loginState.mfaCode || loginState.mfaCode.length !== 6 || !/^\d+$/.test(loginState.mfaCode)) {
-      showToastNotification("Invalid Code. Please enter a valid 6-digit code from your authenticator app.");
-      return;
-    }
-
-    const loginResponse = await login(loginState.emailLogin, loginState.password);
-
-    if (loginResponse.success) {
-      showToastNotification("Welcome back!");
-    } else {
-      showToastNotification(loginResponse.message);
-    }
+    setBusy(true)
+    const result = await login(form.emailLogin, form.password)
+    setBusy(false)
+    showToastNotification(result.success ? "Welcome back!" : result.message)
   }
 
-  // Handle account creation
-  const handleCreateAccount = () => {
-    if (!loginState.firstname || !loginState.surname) {
-      showToastNotification("Please enter both first name and surname");
-      return;
+  const handleCreateAccount = async () => {
+    if (!checkValidName(form.firstname) || !checkValidName(form.surname)) {
+      showToastNotification("Enter your first name and surname.")
+      return
     }
-
-    if (!checkValidName(loginState.firstname)) {
-      console.log(loginState.firstname);
-      showToastNotification("Please enter valid first name.");
-      return;
+    if (!checkValidEmail(form.emailRegistering)) {
+      showToastNotification("That email doesn't look right.")
+      return
     }
-
-    if (!checkValidName(loginState.surname)) {
-      showToastNotification("Please enter valid surname.");
-      return;
+    if (!checkValidPassword(form.password)) {
+      showToastNotification("Your password needs 8+ characters, upper and lower case, and a number.")
+      return
     }
-
-    if (!checkValidEmail(loginState.emailRegistering)) {
-      showToastNotification("Invalid email");
-      return;
-    }
-
-    if (!checkValidPassword(loginState.password)) {
-      showToastNotification(
-        "Password must contain both uppercase and lowercase characters, " + 
-        "a digit and be at least 8 characters long",
-      );
-      return;
-    }
-
-    if (loginState.password !== loginState.confirmPassword) {
-      showToastNotification("Passwords don't match");
-      return;
-    }
-
-    if (loginState.userType === "COUNCIL") {
+    if (form.userType === "COUNCIL") {
       setActivePage(LoginPages.SelectArea)
-    } else {
-      register(loginState)
-        .then((response) => {
-          if (response.success) {
-            showToastNotification("Account created, you can log in now")
-            setLoginState(prev => ({...prev, password: ""}));
-            setActivePage(LoginPages.LoginPage)
-          } else {
-            showToastNotification(response.message)
-          }
-        })
+      return
     }
+    setBusy(true)
+    const result = await register(form)
+    setBusy(false)
+    if (!result.success) {
+      showToastNotification(result.message)
+      return
+    }
+    showToastNotification("Account made, you can log in now.")
+    setForm((prev) => ({ ...prev, emailLogin: prev.emailRegistering, password: "" }))
+    setTab("login")
   }
 
-  const styles = StyleSheet.create({
-    container: {
-      width: "100%",
-      flex: 1,
-      backgroundColor: theme.bg_primary,
-    },
-    loginContainer: {
-      alignItems: "center",
-      width: "100%",
-      marginTop: 40,
-    },
-    logo: {
-      width: 150,
-      height: 150,
-      marginBottom: 1,
-      marginTop: 1,
-    },
-    title: {
-      fontSize: 30,
-      fontWeight: "bold",
-      marginBottom: 20,
-      color: theme.text,
-      textAlign: "center",
-    },
-    textInput: {
-      width: 250,
-      borderWidth: 1,
-      borderColor: theme.primary,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      marginBottom: 15,
-      color: theme.text,
-    },
-    paragraph: {
-      fontSize: 15,
-      lineHeight: 22,
-      color: theme.text,
-      marginBottom: 15,
-      textAlign: "center",
-    },
-    loginButton: {
-      marginBottom: 20,
-      marginTop: 1,
-      alignSelf: "center",
-    },
-    linkText: {
-      color: theme.text,
-      textDecorationLine: "underline",
-    },
-    navRow: {
-      flexDirection: "row",
-      justifyContent: "center",
-      marginBottom: 10,
-    },
-    navButton: {
-      marginHorizontal: 10,
-    },
-    label: {
-      fontSize: 14,
-      color: theme.text,
-      marginBottom: 8,
-      alignSelf: "flex-start",
-    },
-    userTypeContainer: {
-      width: 250,
-      marginBottom: 10,
-    },
-    radioGroup: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    radioOption: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    radioButton: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderColor: theme.primary,
-      marginRight: 8,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    radioButtonSelected: {
-      borderColor: theme.primary,
-      backgroundColor: theme.primary,
-    },
-    radioLabel: {
-      fontSize: 14,
-      color: theme.text,
-    },
-    mfaContainer: {
-      width: 250,
-      marginBottom: 10,
-      alignItems: "center",
-    },
-    mfaCodeLabel: {
-      fontSize: 16,
-      fontWeight: "500",
-      marginBottom: 5,
-      marginTop: 10,
-      color: theme.text,
-      textAlign: "center",
-    },
-    mfaDivider: {
-      height: 1,
-      backgroundColor: theme.primary,
-      width: 250,
-      marginVertical: 10,
-      opacity: 0.5,
-    },
-    mfaCodeInput: {
-      width: 150,
-      borderWidth: 1,
-      borderColor: theme.primary,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      marginBottom: 20,
-      color: theme.text,
-      fontSize: 20,
-      textAlign: "center",
-      letterSpacing: 5,
-    },
-    extraPadding: {
-      paddingBottom: 100,
-    },
-    pendingContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      width: "100%",
-      maxWidth: 500,
-      flex: 1,
-    },
-    titleWrapper: {
-      alignItems: "center",
-      marginBottom: 20,
-      marginTop: 20,
-    },
-    titleContainer: {
-      position: "relative",
-      alignItems: "center",
-    },
-    underline: {
-      position: "absolute",
-      bottom: -2,
-      left: 0,
-      right: 0,
-      height: 2,
-      backgroundColor: theme.primary,
-      width: "auto",
-    },
-    quoteContainer: {
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    italicText: {
-      fontStyle: "italic",
-      fontSize: 18,
-      color: theme.text,
-    },
-    contentCard: {
-      backgroundColor: theme.bg_secondary,
+  // Council sign up continues on the area picker, then a "waiting for approval" page
+  if (activePage === LoginPages.SelectArea) {
+    return Platform.OS === "web" ? (
+      <LeafletContextProvider>
+        <SelectAreaScreen registerData={form} setRegisterData={setForm} setPage={setActivePage} />
+      </LeafletContextProvider>
+    ) : (
+      <SelectAreaScreen registerData={form} setRegisterData={setForm} setPage={setActivePage} />
+    )
+  }
+
+  if (activePage === LoginPages.PendingApproval) {
+    return (
+      <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}>
+        <View style={{ width: "100%", maxWidth: 560, alignSelf: "center", padding: 36, borderRadius: 24, backgroundColor: theme.bg_secondary }}>
+          <Text style={{ fontFamily: FONT.hand, fontSize: 30, color: theme.accent, transform: [{ rotate: "-2deg" }] }}>nearly there</Text>
+          <Text style={{ fontFamily: FONT.bold, fontSize: 36, letterSpacing: -1, color: theme.text, marginTop: 6 }} accessibilityRole="header">
+            Your council account is waiting for approval
+          </Text>
+          <Text style={{ fontFamily: FONT.regular, fontSize: 18, lineHeight: 27, color: theme.text_muted, marginTop: 14 }}>
+            An admin checks each new council before it can add or edit recycling points. Once you're approved, log in
+            with the email and password you just picked.
+          </Text>
+          <Text style={{ fontFamily: FONT.regular, fontSize: 18, lineHeight: 27, color: theme.text_muted, marginTop: 10 }}>
+            You can still scan things and use the map without an account in the meantime.
+          </Text>
+          <PrimaryButton title="Back to log in" onPress={() => { setActivePage(LoginPages.LoginPage); switchTab("login") }} />
+        </View>
+      </ScrollView>
+    )
+  }
+
+  const inputProps = (name: string): TextInputProps & { style: any } => ({
+    onFocus: () => setFocused(name),
+    onBlur: () => setFocused(null),
+    placeholderTextColor: c.faint,
+    style: {
+      marginTop: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
       borderRadius: 12,
-      flexGrow: 0,
-      marginHorizontal: 10,
-      marginBottom: 20,
-      padding: 15,
-      width: "100%",
-      maxWidth: 450,
-    },
-    boldText: {
-      fontWeight: "bold",
-    },
-    sectionTitle: {
-      fontWeight: "bold",
-      fontSize: 18,
+      borderWidth: 1.5,
+      borderColor: focused === name ? theme.accent : c.border,
+      backgroundColor: c.panel,
       color: theme.text,
-      marginBottom: 8,
+      fontFamily: FONT.regular,
+      fontSize: 17,
+      outlineStyle: "none",
     },
   })
 
+  const label = { fontFamily: FONT.semiBold, fontSize: 15, color: theme.text }
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{
-        flexGrow: 1,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {activePage === LoginPages.HomePage && (
-        <View style={styles.loginContainer}>
-          <Text style={[styles.title, { color: theme.secondary }]}>EcoNexus</Text>
-          <Image source={logoSource} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.title}>
-            Scan <Text style={{ color: theme.secondary }}>Sort</Text> Save
-          </Text>
-          <CustomButton title="Login" onPress={() => setActivePage(LoginPages.LoginPage)} style={styles.loginButton} />
-          <TouchableOpacity onPress={() => setActivePage(LoginPages.CreateAccountPage)}>
-            <Text style={[styles.paragraph, styles.linkText]}>No Account? click here to create one</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+    <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 32 }}>
+      <View style={{ width: "100%", maxWidth: 1200, alignSelf: "center", paddingHorizontal: wide ? 24 : 16, flexDirection: "row", flexWrap: "wrap", gap: 32 }}>
 
-      {activePage === LoginPages.CreateAccountPage && (
-        <View style={styles.loginContainer}>
-          <Text style={styles.title}>Create Account</Text>
+        {wide && <SidePanel tab={tab} />}
 
-          {/* First Name Input */}
-          <TextInput
-            placeholder="First Name"
-            placeholderTextColor={theme.text}
-            autoCapitalize="words"
-            style={styles.textInput}
-            value={loginState.firstname}
-            onChangeText={(text) => setLoginState({ ...loginState, firstname: text })}
-          />
-
-          {/* Surname Input */}
-          <TextInput
-            placeholder="Surname"
-            placeholderTextColor={theme.text}
-            autoCapitalize="words"
-            style={styles.textInput}
-            value={loginState.surname}
-            onChangeText={(text) => setLoginState({ ...loginState, surname: text })}
-          />
-
-          {/* Email Input */}
-          <TextInput
-            placeholder="Enter Email"
-            placeholderTextColor={theme.text}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.textInput}
-            value={loginState.emailRegistering}
-            onChangeText={(text) => setLoginState({ ...loginState, emailRegistering: text })}
-          />
-
-          {/* Password Input */}
-          <TextInput
-            placeholder="Enter Password"
-            placeholderTextColor={theme.text}
-            secureTextEntry
-            style={styles.textInput}
-            value={loginState.password}
-            onChangeText={(text) => setLoginState({ ...loginState, password: text })}
-          />
-
-          {/* Confirm Password Input */}
-          <TextInput
-            placeholder="Confirm Password"
-            placeholderTextColor={theme.text}
-            secureTextEntry
-            style={styles.textInput}
-            value={loginState.confirmPassword}
-            onChangeText={(text) => setLoginState({ ...loginState, confirmPassword: text })}
-          />
-
-          {/* User Type Selection */}
-          <View style={styles.userTypeContainer}>
-            <Text style={styles.label}>Account Type:</Text>
-            <View style={styles.radioGroup}>
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setLoginState({ ...loginState, userType: "USER" })}
+        <View style={{ flexGrow: 1, flexBasis: wide ? 400 : "100%", minWidth: 0, maxWidth: wide ? undefined : 560 }}>
+          {/* Tabs */}
+          <View style={{ flexDirection: "row", gap: 6, padding: 5, borderRadius: 14, backgroundColor: theme.bg_secondary, alignSelf: "flex-start" }} accessibilityRole="tablist">
+            {(["login", "signup"] as Tab[]).map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => switchTab(t)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === t }}
+                style={{ paddingVertical: 9, paddingHorizontal: 18, borderRadius: 10, backgroundColor: tab === t ? theme.accent : "transparent" }}
               >
-                <View style={[styles.radioButton, loginState.userType === "USER" && styles.radioButtonSelected]} />
-                <Text style={styles.radioLabel}>Normal User</Text>
-              </TouchableOpacity>
+                <Text style={{ fontFamily: tab === t ? FONT.bold : FONT.semiBold, fontSize: 16, color: tab === t ? theme.on_accent : theme.text_muted }}>
+                  {t === "login" ? "Log in" : "Sign up"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
-              <TouchableOpacity
-                style={styles.radioOption}
-                onPress={() => setLoginState({ ...loginState, userType: "COUNCIL" })}
-              >
-                <View style={[styles.radioButton, loginState.userType === "COUNCIL" && styles.radioButtonSelected]} />
-                <Text style={styles.radioLabel}>Council User</Text>
-              </TouchableOpacity>
+          {tab === "login" ? (
+            <View>
+              <Text style={{ fontFamily: FONT.bold, fontSize: 34, letterSpacing: -1, color: theme.text, marginTop: 28 }} accessibilityRole="header">Log in</Text>
+
+              <Text style={[label, { marginTop: 24 }]}>Email</Text>
+              <TextInput
+                {...inputProps("emailLogin")}
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                accessibilityLabel="Email"
+                value={form.emailLogin}
+                onChangeText={(text) => setForm({ ...form, emailLogin: text })}
+                onSubmitEditing={handleLogin}
+              />
+
+              <Text style={[label, { marginTop: 18 }]}>Password</Text>
+              <TextInput
+                {...inputProps("password")}
+                secureTextEntry
+                autoComplete="current-password"
+                accessibilityLabel="Password"
+                value={form.password}
+                onChangeText={(text) => setForm({ ...form, password: text })}
+                onSubmitEditing={handleLogin}
+              />
+
+              <PrimaryButton title={busy ? "Logging in..." : "Log in"} onPress={handleLogin} disabled={busy} />
+
+              {DEMO_ACCOUNTS_ENABLED && (
+                <View style={{ marginTop: 28, padding: 20, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed", borderColor: c.border }}>
+                  <Text style={{ fontFamily: FONT.bold, fontSize: 17, color: theme.text }}>Just looking?</Text>
+                  <Text style={{ fontFamily: FONT.regular, fontSize: 16, lineHeight: 24, color: theme.text_muted, marginTop: 4 }}>
+                    Try it as a resident, a council or an admin. No sign up needed.
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                    {DEMO_ACCOUNTS.map((account) => (
+                      <Pressable
+                        key={account.role}
+                        onPress={() => logInAs(account)}
+                        disabled={loadingRole !== null}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Log in as the demo ${account.role === "User" ? "resident" : account.role.toLowerCase()}`}
+                        style={({ hovered }: any) => ({ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 10, backgroundColor: hovered ? c.border : c.track })}
+                      >
+                        <Text style={{ fontFamily: FONT.semiBold, fontSize: 15, color: theme.text }}>
+                          {loadingRole === account.role ? "Logging in..." : account.role === "User" ? "Resident" : account.role}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {demoError && <Text style={{ fontFamily: FONT.regular, fontSize: 14, color: theme.text_muted, marginTop: 10 }}>{demoError}</Text>}
+                </View>
+              )}
             </View>
-          </View>
+          ) : (
+            <View>
+              <Text style={{ fontFamily: FONT.bold, fontSize: 34, letterSpacing: -1, color: theme.text, marginTop: 28 }} accessibilityRole="header">Make an account</Text>
 
-          {/* MFA Setup - Using the imported component with user's email */}
-          <View style={styles.mfaContainer}>
-            <Text style={styles.label}>Multi-Factor Authentication:</Text>
-            <AuthenticatorQR email={loginState.emailRegistering || "user@example.com"} appName="EcoNexus" />
-          </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 20 }} accessibilityRole="radiogroup">
+                {([
+                  ["USER", "I'm a resident", "Scan what you recycle and track your week."],
+                  ["COUNCIL", "I work for a council", "Pick your area next. An admin checks it first."],
+                ] as [UserRole, string, string][]).map(([type, title, blurb]) => {
+                  const picked = form.userType === type
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => setForm({ ...form, userType: type })}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: picked }}
+                      style={{ flexGrow: 1, flexBasis: wide ? 200 : "100%", padding: 16, borderRadius: 14, borderWidth: picked ? 2 : 1.5, borderColor: picked ? theme.accent : c.border, backgroundColor: picked ? c.panel : "transparent" }}
+                    >
+                      <Text style={{ fontFamily: FONT.bold, fontSize: 17, color: theme.text }}>{title}</Text>
+                      <Text style={{ fontFamily: FONT.regular, fontSize: 14, lineHeight: 20, color: theme.text_muted, marginTop: 4 }}>{blurb}</Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
 
-          {/* Navigation Buttons */}
-          <View style={styles.navRow}>
-            <CustomButton title="Back" onPress={() => setActivePage(LoginPages.HomePage)} style={styles.navButton} />
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 18 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={label}>First name</Text>
+                  <TextInput {...inputProps("firstname")} placeholder="Sam" autoComplete="given-name" accessibilityLabel="First name"
+                    value={form.firstname} onChangeText={(text) => setForm({ ...form, firstname: text })} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={label}>Surname</Text>
+                  <TextInput {...inputProps("surname")} placeholder="Taylor" autoComplete="family-name" accessibilityLabel="Surname"
+                    value={form.surname} onChangeText={(text) => setForm({ ...form, surname: text })} />
+                </View>
+              </View>
 
-            <CustomButton title="Create" onPress={handleCreateAccount} />
-          </View>
-        </View>
-      )}
+              <Text style={[label, { marginTop: 18 }]}>Email</Text>
+              <TextInput {...inputProps("emailRegistering")} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address"
+                autoComplete="email" accessibilityLabel="Email" value={form.emailRegistering}
+                onChangeText={(text) => setForm({ ...form, emailRegistering: text })} />
 
-      {activePage === LoginPages.LoginPage && (
-        <View style={styles.loginContainer}>
-          <Text style={styles.title}>Login</Text>
+              <Text style={[label, { marginTop: 18 }]}>Password</Text>
+              <TextInput {...inputProps("newPassword")} secureTextEntry autoComplete="new-password" accessibilityLabel="Password"
+                value={form.password} onChangeText={(text) => setForm({ ...form, password: text })} onSubmitEditing={handleCreateAccount} />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 6, marginTop: 10 }}>
+                {PASSWORD_RULES.map((rule) => {
+                  const ok = rule.test(form.password)
+                  return (
+                    <Text key={rule.label} style={{ fontFamily: FONT.regular, fontSize: 14, color: ok ? theme.text : theme.text_muted }}>
+                      <Text style={{ color: ok ? theme.accent : c.faint }}>{ok ? "✓ " : "○ "}</Text>{rule.label}
+                    </Text>
+                  )
+                })}
+              </View>
 
-          {/* Username/Email Input */}
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor={theme.text}
-            autoCapitalize="none"
-            style={styles.textInput}
-            value={loginState.emailLogin}
-            onChangeText={(text) => setLoginState({ ...loginState, emailLogin: text })}
-          />
-
-          {/* Password Input */}
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor={theme.text}
-            secureTextEntry
-            style={styles.textInput}
-            value={loginState.password}
-            onChangeText={(text) => setLoginState({ ...loginState, password: text })}
-          />
-
-          {/* MFA Code Section */}
-          <View style={styles.mfaDivider} />
-          <Text style={styles.mfaCodeLabel}>Authenticator Code</Text>
-
-          {/* MFA Code Input */}
-          <TextInput
-            placeholder="000000"
-            placeholderTextColor={theme.text}
-            keyboardType="number-pad"
-            maxLength={6}
-            style={styles.mfaCodeInput}
-            value={loginState.mfaCode}
-            onChangeText={(text) => {
-              // Only allow digits
-              const numericText = text.replace(/[^0-9]/g, "")
-              setLoginState({ ...loginState, mfaCode: numericText })
-            }}
-          />
-          <View style={styles.navRow}>
-            <CustomButton title="Back" onPress={() => setActivePage(LoginPages.HomePage)} style={styles.navButton} />
-            <CustomButton title="Login" onPress={handleLogin} style={styles.navButton} />
-          </View>
-        </View>
-      )}
-
-      {/* Council Select Area Page */}
-      {activePage === LoginPages.SelectArea &&
-        (Platform.OS === "web" ? (
-          <LeafletContextProvider>
-            <SelectAreaScreen registerData={loginState} setRegisterData={setLoginState} setPage={setActivePage}/>
-          </LeafletContextProvider>
-        ) : (
-          <SelectAreaScreen registerData={loginState} setRegisterData={setLoginState} setPage={setActivePage}/>
-        ))}
-
-      {/* Pending Approval for Council Page */}
-      {activePage === LoginPages.PendingApproval && (
-        <View style={styles.pendingContainer}>
-          {/* Title with underline */}
-          <View style={styles.titleWrapper}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Registration Form Submitted</Text>
-              <View style={styles.underline} />
+              <PrimaryButton
+                title={busy ? "Making your account..." : form.userType === "COUNCIL" ? "Next: pick your area" : "Create account"}
+                onPress={handleCreateAccount}
+                disabled={busy}
+              />
             </View>
-          </View>
-
-          <View style={styles.quoteContainer}>
-            <Text style={styles.italicText}>Your Council Account is Pending Approval</Text>
-          </View>
-
-          <View style={styles.contentCard}>
-            <Text style={styles.paragraph}>
-              Thank you for registering as a <Text style={styles.boldText}>Council User</Text>. Your account has been
-              created and is now pending approval from our admin team.
-            </Text>
-            <Text style={styles.paragraph}>
-              You will receive an email notification once your account has been approved. This process typically takes{" "}
-              <Text style={styles.boldText}>1-2 business days</Text>.
-            </Text>
-            <Text style={styles.paragraph}>
-              In the meantime, you can continue using EcoNexus anonymously to explore our features.
-            </Text>
-          </View>
-
-          {/* Home button */}
-          <View style={styles.navRow}>
-            <CustomButton
-              title="Return to Home"
-              onPress={() => setActivePage(LoginPages.HomePage)}
-              style={{ minWidth: 200 }}
-            />
-          </View>
+          )}
         </View>
-      )}
+      </View>
     </ScrollView>
+  )
+}
+
+function PrimaryButton({ title, onPress, disabled }: { title: string; onPress: () => void; disabled?: boolean }) {
+  const { theme } = useThemeContext()
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      style={({ hovered }: any) => ({
+        marginTop: 28,
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: "center",
+        backgroundColor: theme.accent,
+        opacity: disabled ? 0.6 : hovered ? 0.88 : 1,
+      })}
+    >
+      <Text style={{ fontFamily: FONT.bold, fontSize: 18, color: theme.on_accent }}>{title}</Text>
+    </Pressable>
+  )
+}
+
+// The panel on the left on wide screens, with a line or two about the app and some doodles
+function SidePanel({ tab }: { tab: Tab }) {
+  const { theme } = useThemeContext()
+  const login = tab === "login"
+  return (
+    <View style={{ flexGrow: 1, flexBasis: 440, minWidth: 0, minHeight: 520, borderRadius: 24, padding: 40, backgroundColor: theme.bg_secondary, overflow: "hidden" }}>
+      <Text style={{ fontFamily: FONT.hand, fontSize: 30, color: theme.accent, transform: [{ rotate: "-2deg" }] }}>
+        {login ? "welcome back" : "takes a minute"}
+      </Text>
+      <Text style={{ fontFamily: FONT.bold, fontSize: 52, lineHeight: 54, letterSpacing: -2, color: theme.text, marginTop: 8 }}>
+        {login ? "Scan it.\nSort it.\nSee it add up." : "Know what goes\nin which bin."}
+      </Text>
+      <Text style={{ fontFamily: FONT.regular, fontSize: 19, lineHeight: 28, color: theme.text_muted, marginTop: 20, maxWidth: 380 }}>
+        {login
+          ? "Your week of recycling, what it saved, and where the nearest point is."
+          : "Scan a barcode, find out what it's made of, and see where to take it. Your dashboard keeps count."}
+      </Text>
+      <View style={{ flex: 1 }} />
+      <Svg width={300} height={164} viewBox="0 0 300 164" style={{ alignSelf: "flex-end" }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Path d="M40 140 V70 q0-14 10-20 V34 h20 v16 q10 6 10 20 v70 z M40 92 h40" fill="none" stroke={theme.accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M120 140 l-6-82 h52 l-6 82 z M110 52 h60" fill="none" stroke={theme.accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M200 98 l40-20 l40 20 v40 l-40 18 l-40-18 z M200 98 l40 18 l40-18 M240 116 v40" fill="none" stroke={theme.accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    </View>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
@@ -16,14 +16,27 @@ import { DemoAccount } from "@/constants/DemoAccounts";
  *   - error: a message to show if the last attempt failed, or null.
  */
 export function useDemoLogin() {
-  const { login, logout, isUserLoggedIn } = useAuth();
+  const { login, logout, isUserLoggedIn, userData } = useAuth();
   const [loadingRole, setLoadingRole] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingRoute, setPendingRoute] = useState<DemoAccount["route"] | null>(null);
+
+  // Only open the account's page once the login has actually landed in the auth state,
+  // otherwise the page's guard sees "logged out" for a moment and shows the log in toast
+  useEffect(() => {
+    if (!pendingRoute || !isUserLoggedIn || !userData) return;
+    router.navigate(pendingRoute);
+    setPendingRoute(null);
+  }, [pendingRoute, isUserLoggedIn, userData]);
 
   const logInAs = async (account: DemoAccount): Promise<boolean> => {
     setError(null);
     setLoadingRole(account.role);
     if (isUserLoggedIn) {
+      // Leave the current (protected) page first, so its guard doesn't see the logout and
+      // show the log in toast while we're switching accounts
+      router.replace("/");
+      await new Promise((resolve) => setTimeout(resolve, 100));
       await logout();
     }
     const result = await login(account.email, account.password);
@@ -33,7 +46,7 @@ export function useDemoLogin() {
       setError("Couldn't log in. The server may be waking up, so try again in a minute.");
       return false;
     }
-    router.navigate(account.route);
+    setPendingRoute(account.route);
     return true;
   };
 

@@ -150,6 +150,7 @@ const Contributions = () => {
               <Text>the <Text style={strong}>PostgreSQL database</Text> and the models behind it</Text>,
               <Text>making the whole thing <Text style={strong}>async</Text>, from the endpoints down to the database calls</Text>,
               <Text><Text style={strong}>over 150 tests</Text> with pytest, covering logins, permissions, products, recycling points and the dashboards</Text>,
+              <Text>security scans with <Text style={strong}>Bandit</Text> and load tests with <Text style={strong}>Locust</Text>, to check it held up with lots of people using it at once</Text>,
             ]} />
             <P>Between the backend team, the API handles:</P>
             <Bullets items={[
